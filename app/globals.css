@@ -27,3 +27,79 @@ input,textarea{caret-color:var(--primary)}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.three-stage{display:none}.scene-fallback{opacity:1!important}.scene-pause{display:none}}
 
 .dark .form-error{background:#3a2328;border-color:#89515a;color:#ffc8cf}
+
+/* Authentication uses the EcoCiclo palette without the application navigation. */
+.access-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.access-header {
+  min-height: 70px;
+  border-bottom: 1px solid var(--border);
+}
+
+.access-header .header-inner {
+  min-height: inherit;
+}
+
+.access-header .theme-toggle {
+  display: inline-flex;
+}
+
+.access-shell > main {
+  flex: 1;
+}
+
+.access-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 28px;
+  padding-block: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.access-footer a:hover,
+.access-footer a:focus-visible {
+  text-decoration: underline;
+}
+
+.auth-visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 450px;
+}
+
+.auth-visual > h2 {
+  max-width: 14ch;
+  font-size: clamp(30px, 4vw, 44px);
+  letter-spacing: -.035em;
+}
+
+.auth-visual > img {
+  width: 100%;
+  margin: 14px 0 0;
+}
+
+.auth-form-section > p {
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.auth-form-section .notice-box {
+  margin-bottom: 16px;
+}
+
+.auth-form .password-field > input {
+  min-height: 48px;
+}
+
+@media (max-width: 767px) {
+  .access-header {
+    min-height: 60px;
+  }
+}

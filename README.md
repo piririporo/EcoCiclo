@@ -337,7 +337,20 @@ npm ci
 npm run dev
 ```
 
-Abra `http://localhost:3000`. Para habilitar cadastro e persistência, aplique a [migração inicial](supabase/migrations/20261110235412_ecociclo_foundation.sql) ao projeto Supabase e autorize o redirecionamento de autenticação para `/conta/` nas URLs de desenvolvimento e produção. A migração do ambiente hospedado e a entrega de e-mails de autenticação estão pendentes de validação.
+Abra `http://localhost:3000`. A entrada do EcoCiclo exige uma sessão com e-mail verificado. Termos e privacidade podem ser consultados antes do cadastro.
+
+### Autenticação e administração
+
+1. Aplique as [migrações do EcoCiclo](supabase/migrations/) em ordem no projeto Supabase.
+2. Nas configurações do Supabase Auth, use o domínio de produção como **Site URL** e autorize os redirecionamentos completos para `/conta/` em produção e desenvolvimento. Mantenha a confirmação por e-mail habilitada e configure SMTP para receber cadastros externos. Os links de confirmação e recuperação usam PKCE e devem ser abertos no navegador em que foram solicitados.
+3. O proprietário do banco deve conceder o papel inicial `admin` a uma conta identificada e com e-mail confirmado. Novas contas recebem somente o papel `user`. A partir do primeiro administrador, use **Administração → Pessoas e permissões** para gerenciar os papéis.
+
+| Papel | Acesso |
+| --- | --- |
+| Usuário | Equipamentos e pedidos próprios, catálogo e acompanhamento de destinação |
+| Técnico | Avaliação de equipamentos enviados à equipe técnica |
+| Parceiro | Encaminhamentos atribuídos à sua organização ativa |
+| Administrador | Permissões, avaliações, catálogo, denúncias, parceiros e auditoria |
 
 ```sh
 npm run typecheck

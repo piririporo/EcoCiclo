@@ -1,24 +1,271 @@
 'use client';
-import { useEffect,useState } from 'react';
+
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowRight,ArrowLeft,Eye,EyeOff,Mail,ShieldCheck,Recycle,LogOut,Camera } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { isAuthError } from '@supabase/supabase-js';
+import { ArrowRight, Camera, Eye, EyeOff, LogOut, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { usePlatform } from './platform-provider';
 import { db } from '@/lib/supabase';
 import { errorMessage } from '@/lib/utils';
-import { passwordStrength,validatePhotos } from '@/lib/domain.mjs';
-export function AuthPage(){const p=usePlatform();const [mode,setMode]=useState('login'),[show,setShow]=useState(false),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(''),[recovery,setRecovery]=useState(false),[avatar,setAvatar]=useState(''),[profile,setProfile]=useState({city:'',bio:''});
- useEffect(()=>{if(new URLSearchParams(location.search).get('mode')==='cadastro')setMode('signup');const sub=db?.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY'){setRecovery(true);setMode('reset');}});return()=>sub?.data.subscription.unsubscribe();},[]);
+import { validatePhotos } from '@/lib/domain.mjs';
+
+type Mode = 'login' | 'signup' | 'forgot';
+const minimumPasswordLength = 12;
+const copy = {
+  login: ['Entre no EcoCiclo', 'Acesse sua conta para acompanhar equipamentos e encontrar componentes.', 'Entrar'],
+  signup: ['Crie sua conta', 'Use um e-mail ao qual você tenha acesso para confirmar o cadastro.', 'Criar conta'],
+  forgot: ['Recupere seu acesso', 'Enviaremos um link para redefinir sua senha.', 'Enviar link'],
+  reset: ['Escolha uma nova senha', 'Use pelo menos 12 caracteres para proteger sua conta.', 'Salvar nova senha'],
+};
+
+function authErrorMessage(error: unknown, mode: Mode | 'reset') {
+  if (isAuthError(error)) {
+    if (error.status === 429) return 'Muitas tentativas. Aguarde um pouco antes de tentar novamente.';
+    if (error.code === 'weak_password') return 'Escolha uma senha mais forte com pelo menos 12 caracteres.';
+    if (mode === 'login' && ['invalid_credentials', 'email_not_confirmed', 'user_banned'].includes(error.code ?? '')) {
+      return 'Não foi possível entrar. Confira seu e-mail e sua senha e verifique se o cadastro foi confirmado.';
+    }
+  }
+  return mode === 'reset'
+    ? 'Não foi possível concluir a redefinição. Tente novamente ou solicite outro link.'
+    : 'Não foi possível concluir o pedido. Verifique sua conexão e tente novamente.';
+}
+
+export function AuthPage({ account = false }: { account?: boolean }) {
+  const { session, user } = usePlatform();
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>('login');
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  const submitting = useRef(false);
+  const activeMode = session.recovering ? 'reset' : mode;
+  const [title, description, action] = copy[activeMode];
+  const ready = Boolean(db) && session.status !== 'checking' && session.status !== 'unavailable'
+    && (!session.recovering || Boolean(session.user));
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('mode') === 'cadastro') setMode('signup');
+  }, []);
+
+  useEffect(() => {
+    if (!account || session.status === 'checking') return;
+    const url = new URL(window.location.href);
+    const hash = new URLSearchParams(url.hash.slice(1));
+    if (url.searchParams.has('code') || url.searchParams.has('error') || hash.has('error')) {
+      setError('O link expirou ou foi aberto em outro navegador. Solicite um novo link e abra-o neste navegador.');
+      url.searchParams.delete('code');
+      url.searchParams.delete('error');
+      url.searchParams.delete('error_code');
+      url.searchParams.delete('error_description');
+      url.searchParams.delete('flow_id');
+      url.hash = '';
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [account, session.status]);
+
+  function changeMode(next: Mode) {
+    setMode(next);
+    setShowPassword(false);
+    setError('');
+    setSuccess('');
+  }
+
+  async function finishRecovery(allDevices: boolean) {
+    if (!db) return;
+    const { error } = await db.auth.signOut({ scope: allDevices ? 'global' : 'local' });
+    if (error) throw error;
+    changeMode('login');
+    setPasswordChanged(false);
+    if (allDevices) setSuccess('Sua senha foi alterada. Entre novamente com a nova senha.');
+  }
+
+  async function cancelRecovery() {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await finishRecovery(passwordChanged);
+    } catch {
+      setError('Não foi possível encerrar a sessão. Tente novamente.');
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!db || !ready || submitting.current) return;
+    setError('');
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get('email') ?? '').trim();
+    const password = String(form.get('password') ?? '');
+    const callback = new URL('/conta/', window.location.origin).href;
+
+    if ((activeMode === 'signup' || activeMode === 'reset') && password.length < minimumPasswordLength) {
+      setError('Use pelo menos 12 caracteres na nova senha.');
+      return;
+    }
+    if (activeMode === 'reset' && password !== form.get('confirmation')) {
+      setError('As senhas precisam ser iguais.');
+      return;
+    }
+
+    submitting.current = true;
+    setBusy(true);
+    try {
+      switch (activeMode) {
+        case 'login': {
+          const { error } = await db.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          if (account) router.replace('/painel/');
+          break;
+        }
+        case 'signup': {
+          const name = String(form.get('name') ?? '').trim();
+          if (name.length < 2) {
+            setError('Informe um nome com pelo menos dois caracteres.');
+            break;
+          }
+          const { error } = await db.auth.signUp({
+            email, password, options: { data: { display_name: name }, emailRedirectTo: callback },
+          });
+          if (error && !['user_already_exists', 'email_exists'].includes(error.code ?? '')) throw error;
+          setSuccess('Se o cadastro puder ser confirmado, você receberá um e-mail. Abra o link neste mesmo navegador.');
+          break;
+        }
+        case 'forgot': {
+          const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: callback });
+          if (error && error.code !== 'user_not_found') throw error;
+          setSuccess('Se houver uma conta para este endereço, você receberá um e-mail. Abra o link neste mesmo navegador.');
+          break;
+        }
+        case 'reset': {
+          if (!session.recovering || !session.user) return;
+          const { error } = await db.auth.updateUser({ password });
+          if (error) throw error;
+          setPasswordChanged(true);
+          await finishRecovery(true);
+          break;
+        }
+      }
+    } catch (error) {
+      setError(authErrorMessage(error, activeMode));
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+
+  if (user && account && mode !== 'forgot') return <ProfilePage key={user.id} onRecover={() => changeMode('forgot')} />;
+
+  return (
+    <main id="main" className="container auth-main">
+      <aside className="auth-visual" aria-hidden="true">
+        <h2>Uma nova vida para a tecnologia.</h2>
+        <img src="/visuals/motherboard.svg" width="800" height="600" alt="" />
+      </aside>
+      <section className="auth-form-section" aria-labelledby="auth-title">
+        <h1 id="auth-title">{title}</h1>
+        <p>{description}</p>
+        {session.status === 'unavailable' && (
+          <div className="notice-box" role="status">
+            O acesso está temporariamente indisponível.
+            {db && <Button type="button" variant="outline" onClick={() => window.location.reload()}>Tentar novamente</Button>}
+          </div>
+        )}
+        {success ? (
+          <div className="success-panel" role="status">
+            <Mail size={28} aria-hidden="true" />
+            <p>{success}</p>
+            <Button variant="outline" onClick={() => changeMode('login')}>{user ? 'Voltar ao perfil' : 'Voltar para entrar'}</Button>
+          </div>
+        ) : (
+          <>
+            {passwordChanged ? (
+              <div className="notice-box">A senha foi alterada. Encerre as sessões para entrar novamente.</div>
+            ) : (
+              <form key={activeMode} method="post" onSubmit={submit} className="auth-form" aria-busy={busy}>
+                {activeMode === 'signup' && (
+                  <label>Seu nome<input name="name" autoComplete="name" required minLength={2} maxLength={120} /></label>
+                )}
+                {activeMode !== 'reset' && (
+                  <label>
+                    E-mail
+                    <input name="email" autoComplete="username" type="email" required maxLength={254}
+                      spellCheck={false} autoCapitalize="none" defaultValue={activeMode === 'forgot' ? user?.email : undefined} />
+                  </label>
+                )}
+                {activeMode !== 'forgot' && (
+                  <>
+                    <div className="password-label">
+                      <label htmlFor="auth-password">{activeMode === 'reset' ? 'Nova senha' : 'Senha'}</label>
+                      {activeMode === 'login' && <button type="button" disabled={busy} onClick={() => changeMode('forgot')}>Esqueci minha senha</button>}
+                    </div>
+                    <div className="password-field">
+                      <input id="auth-password" name="password" type={showPassword ? 'text' : 'password'}
+                        autoComplete={activeMode === 'login' ? 'current-password' : 'new-password'}
+                        required minLength={activeMode === 'login' ? undefined : minimumPasswordLength}
+                        maxLength={128} aria-describedby={activeMode === 'signup' ? 'auth-password-help' : undefined} />
+                      <button type="button" className="icon-button" aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                        onClick={() => setShowPassword(value => !value)}>
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {activeMode === 'signup' && <small id="auth-password-help" className="muted">Use pelo menos 12 caracteres.</small>}
+                {activeMode === 'reset' && (
+                  <label>
+                    Confirme a nova senha
+                    <input name="confirmation" type="password" autoComplete="new-password" required minLength={minimumPasswordLength} maxLength={128} />
+                  </label>
+                )}
+                {activeMode === 'signup' && (
+                  <label className="checkbox-label">
+                    <input type="checkbox" required />
+                    <span>Li e aceito os <Link href="/termos/" target="_blank" rel="noopener noreferrer">termos de uso</Link> e a <Link href="/privacidade/" target="_blank" rel="noopener noreferrer">política de privacidade</Link>.</span>
+                  </label>
+                )}
+                {error && <p className="form-error" role="alert">{error}</p>}
+                <Button type="submit" size="lg" className="full-width" disabled={busy || !ready}>
+                  {busy ? 'Aguarde…' : session.status === 'checking' ? 'Verificando sessão…' : action}
+                  <ArrowRight size={17} aria-hidden="true" />
+                </Button>
+              </form>
+            )}
+            {passwordChanged && error && <p className="form-error" role="alert">{error}</p>}
+            <div className="auth-switch">
+              {activeMode === 'login' ? (
+                <button type="button" disabled={busy} onClick={() => changeMode('signup')}>Criar uma conta</button>
+              ) : activeMode === 'reset' ? (
+                <button type="button" disabled={busy || !ready} onClick={() => void cancelRecovery()}>
+                  {passwordChanged ? 'Encerrar sessões' : 'Cancelar redefinição'}
+                </button>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => changeMode('login')}>{user ? 'Voltar ao perfil' : 'Voltar para entrar'}</button>
+              )}
+            </div>
+          </>
+        )}
+        <div className="auth-security"><ShieldCheck size={15} aria-hidden="true" />Acesso com e-mail verificado</div>
+      </section>
+    </main>
+  );
+}
+
+function ProfilePage({ onRecover }: { onRecover: () => void }) {
+ const p=usePlatform();
+ const [busy,setBusy]=useState(false),[avatar,setAvatar]=useState(''),[profile,setProfile]=useState({city:'',bio:''});
  useEffect(()=>{if(!p.user||!db)return;void db.from('profiles').select('city,bio,avatar_path').eq('id',p.user.id).maybeSingle().then(async({data})=>{if(!data)return;setProfile({city:data.city??'',bio:data.bio??''});if(data.avatar_path){const image=await db!.storage.from('avatars').createSignedUrl(data.avatar_path,600);if(image.data)setAvatar(image.data.signedUrl);}});},[p.user?.id]);
- function changeMode(next:string){setMode(next);setError('');setSuccess('');setPassword('');}
- async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!db||!p.dataReady){setError('Estamos preparando a abertura dos cadastros. Tente novamente mais tarde.');return;}setError('');setSuccess('');const form=new FormData(e.currentTarget);const email=String(form.get('email')??'').trim(),pass=String(form.get('password')??'');if((mode==='signup'||mode==='reset')&&passwordStrength(pass)<3){setError('Use pelo menos 8 caracteres, letras maiúsculas e minúsculas e números.');return;}if(mode==='reset'&&pass!==form.get('confirmation')){setError('As senhas precisam ser iguais.');return;}setBusy(true);try{
-  if(mode==='login'){const {error}=await db.auth.signInWithPassword({email,password:pass});if(error)throw error;await p.refresh();location.href='/painel/';}
-  else if(mode==='signup'){const {data,error}=await db.auth.signUp({email,password:pass,options:{data:{display_name:String(form.get('name')??'').trim()},emailRedirectTo:location.origin+'/conta/'}});if(error)throw error;if(data.session){await p.refresh();location.href='/painel/';}else setSuccess('Conta criada. Confira seu e-mail para confirmar o cadastro antes de entrar.');}
-  else if(mode==='forgot'){const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/conta/'});if(error)throw error;setSuccess('Se houver uma conta para este e-mail, você receberá um link de recuperação.');}
-  else if(mode==='reset'&&recovery){const {error}=await db.auth.updateUser({password:pass});if(error)throw error;setRecovery(false);setSuccess('Senha alterada com sucesso. Você já pode acessar seu painel.');}
- }catch(e){const message=errorMessage(e);setError(message.includes('Invalid login')?'E-mail ou senha incorretos.':message.includes('Email not confirmed')?'Confirme seu e-mail antes de entrar.':message.includes('rate limit')?'Muitas tentativas. Aguarde um pouco e tente novamente.':message);}finally{setBusy(false);}}
  async function saveProfile(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!p.user||!db)return;setBusy(true);const data=new FormData(e.currentTarget);try{const {error}=await db.from('profiles').update({display_name:String(data.get('name')).trim(),city:String(data.get('city')??''),bio:String(data.get('bio')??'')}).eq('id',p.user.id);if(error)throw error;const {error:authError}=await db.auth.updateUser({data:{display_name:String(data.get('name')).trim()}});if(authError)throw authError;p.notify('Seu perfil foi atualizado.');await p.refresh();}catch(e){p.notify(errorMessage(e));}finally{setBusy(false);}}
- if(p.user&&!['forgot','reset'].includes(mode))return <main id="main" className="container page-main"><div className="page-header"><span className="section-kicker">Cada ciclo tem uma história</span><h1>Seu perfil.</h1><p>Cuide das informações da sua conta.</p></div><div className="profile-layout"><aside className="profile-card"><div className="profile-avatar">{avatar?<img src={avatar} alt="Sua foto de perfil" width="88" height="88"/>:(p.user.user_metadata?.display_name??p.user.email??'E').charAt(0).toUpperCase()}</div><h2>{p.user.user_metadata?.display_name??'Minha conta'}</h2><p>{p.user.email}</p><label className="button button-outline"><Camera size={17}/>Alterar foto<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f||!p.user||!db)return;const invalid=validatePhotos([f]);if(invalid){p.notify(invalid);return;}const path=p.user.id+'/'+crypto.randomUUID()+'.'+f.type.split('/')[1];const {error}=await db.storage.from('avatars').upload(path,f,{contentType:f.type});if(error){p.notify(errorMessage(error));return;}const {error:saveError}=await db.from('profiles').update({avatar_path:path}).eq('id',p.user.id);if(saveError){p.notify(errorMessage(saveError));return;}const {data}=await db.storage.from('avatars').createSignedUrl(path,600);if(data)setAvatar(data.signedUrl);p.notify('Foto atualizada.');}}/></label><Link className="text-link" href="/painel/">Acessar meu painel <ArrowRight size={15}/></Link><Button variant="ghost" onClick={()=>void p.signOut()}><LogOut size={17}/>Sair da conta</Button></aside><form className="panel form-grid" onSubmit={saveProfile}><h2 className="span-2">Informações pessoais</h2><label className="span-2">Nome<input name="name" defaultValue={p.user.user_metadata?.display_name??''} required minLength={2} maxLength={120} autoComplete="name"/></label><label className="span-2">E-mail<input value={p.user.email??''} readOnly type="email"/></label><label className="span-2">Cidade<input name="city" maxLength={100} autoComplete="address-level2" value={profile.city} onChange={e=>setProfile({...profile,city:e.target.value})}/></label><label className="span-2">Sobre você<textarea name="bio" rows={3} maxLength={500} value={profile.bio} onChange={e=>setProfile({...profile,bio:e.target.value})} placeholder="Conte um pouco sobre seus projetos…"/></label><Button type="submit" disabled={busy}>{busy?'Salvando…':'Salvar alterações'}</Button><Button variant="outline" onClick={()=>changeMode('forgot')} type="button">Redefinir senha</Button></form></div></main>;
- const title=mode==='signup'?'Comece um novo ciclo.':mode==='forgot'?'Vamos recuperar seu acesso.':mode==='reset'?'Um novo começo para sua senha.':'Bom ter você de volta.';
- return <main id="main" className="container auth-main"><div className="auth-visual"><div className="auth-cycle"><Recycle size={72} strokeWidth={1}/></div><span className="section-kicker">Tecnologia feita para continuar</span><h2>O que você não usa mais pode ser o começo de algo novo.</h2><img src="/visuals/motherboard.svg" width="800" height="600" alt="Placa-mãe ilustrativa"/><div className="auth-note"><ShieldCheck size={20}/><span>Pessoas conectadas.<br/><strong>Recursos em circulação.</strong></span></div></div><section className="auth-form-section"><Link href="/" className="back-link"><ArrowLeft size={15}/>Voltar ao início</Link><h1>{title}</h1><p>{mode==='signup'?'Crie sua conta e faça parte de uma economia mais circular.':mode==='forgot'?'Informe o e-mail da sua conta para receber um link seguro.':mode==='reset'?'Escolha uma senha forte para proteger seus próximos ciclos.':'Entre para acompanhar seus equipamentos e encontrar novas possibilidades.'}</p>{success?<div className="success-panel" role="status"><Mail size={36}/><h3>Confira os próximos passos</h3><p>{success}</p><Button variant="outline" onClick={()=>changeMode('login')}>Voltar para entrar</Button></div>:<form onSubmit={submit} className="auth-form">{!p.loading&&!p.dataReady&&<div className="notice-box">Os cadastros estão em preparação. Em breve você poderá iniciar seus ciclos por aqui.</div>}{mode==='signup'&&<label>Seu nome<input name="name" autoComplete="name" required minLength={2} maxLength={120} placeholder="Como podemos chamar você?"/></label>}{mode!=='reset'&&<label>E-mail<input name="email" autoComplete="email" type="email" required spellCheck={false} placeholder="voce@exemplo.com"/></label>}{mode!=='forgot'&&<><div className="password-label"><label htmlFor="auth-password">{mode==='reset'?'Nova senha':'Senha'}</label>{mode==='login'&&<button type="button" onClick={()=>changeMode('forgot')}>Esqueci minha senha</button>}</div><div className="password-field"><input id="auth-password" name="password" type={show?'text':'password'} autoComplete={mode==='login'?'current-password':'new-password'} required minLength={8} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha…"/><button type="button" className="icon-button" aria-label={show?'Ocultar senha':'Mostrar senha'} onClick={()=>setShow(v=>!v)}>{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div>{(mode==='signup'||mode==='reset')&&<div className="password-strength"><div>{[1,2,3,4,5].map(n=><span key={n} className={passwordStrength(password)>=n?'filled':''}/>)}</div><small>8+ caracteres, maiúsculas, minúsculas e números.</small></div>}{mode==='reset'&&<label>Confirme a nova senha<input name="confirmation" type="password" autoComplete="new-password" required minLength={8}/></label>}</>}{mode==='signup'&&<label className="checkbox-label"><input type="checkbox" required/> <span>Li e aceito os <Link href="/termos/">termos de uso</Link> e a <Link href="/privacidade/">política de privacidade</Link>.</span></label>}{error&&<div className="form-error" role="alert">{error}</div>}<Button type="submit" size="lg" className="full-width" disabled={busy}>{busy?'Aguarde…':mode==='signup'?'Criar minha conta':mode==='forgot'?'Enviar link de recuperação':mode==='reset'?'Salvar nova senha':'Entrar na minha conta'}<ArrowRight size={17}/></Button></form>}<div className="auth-switch">{mode==='login'?<>Ainda não faz parte? <button onClick={()=>changeMode('signup')}>Crie sua conta</button></>:mode==='signup'?<>Já tem uma conta? <button onClick={()=>changeMode('login')}>Entrar</button></>:<button onClick={()=>changeMode('login')}>Voltar para entrar</button>}</div><div className="auth-security"><ShieldCheck size={14}/>Seus dados ficam protegidos em cada etapa.</div></section></main>;
+ if(!p.user)return null;
+ return <main id="main" className="container page-main"><div className="page-header"><span className="section-kicker">Cada ciclo tem uma história</span><h1>Seu perfil.</h1><p>Cuide das informações da sua conta.</p></div><div className="profile-layout"><aside className="profile-card"><div className="profile-avatar">{avatar?<img src={avatar} alt="Sua foto de perfil" width="88" height="88"/>:(p.user.user_metadata?.display_name??p.user.email??'E').charAt(0).toUpperCase()}</div><h2>{p.user.user_metadata?.display_name??'Minha conta'}</h2><p>{p.user.email}</p><label className="button button-outline"><Camera size={17}/>Alterar foto<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f||!p.user||!db)return;const invalid=validatePhotos([f]);if(invalid){p.notify(invalid);return;}const path=p.user.id+'/'+crypto.randomUUID()+'.'+f.type.split('/')[1];const {error}=await db.storage.from('avatars').upload(path,f,{contentType:f.type});if(error){p.notify(errorMessage(error));return;}const {error:saveError}=await db.from('profiles').update({avatar_path:path}).eq('id',p.user.id);if(saveError){p.notify(errorMessage(saveError));return;}const {data}=await db.storage.from('avatars').createSignedUrl(path,600);if(data)setAvatar(data.signedUrl);p.notify('Foto atualizada.');}}/></label><Link className="text-link" href="/painel/">Acessar meu painel <ArrowRight size={15}/></Link><Button variant="ghost" onClick={()=>void p.signOut()}><LogOut size={17}/>Sair da conta</Button></aside><form className="panel form-grid" onSubmit={saveProfile}><h2 className="span-2">Informações pessoais</h2><label className="span-2">Nome<input name="name" defaultValue={p.user.user_metadata?.display_name??''} required minLength={2} maxLength={120} autoComplete="name"/></label><label className="span-2">E-mail<input value={p.user.email??''} readOnly type="email"/></label><label className="span-2">Cidade<input name="city" maxLength={100} autoComplete="address-level2" value={profile.city} onChange={e=>setProfile({...profile,city:e.target.value})}/></label><label className="span-2">Sobre você<textarea name="bio" rows={3} maxLength={500} value={profile.bio} onChange={e=>setProfile({...profile,bio:e.target.value})} placeholder="Conte um pouco sobre seus projetos…"/></label><Button type="submit" disabled={busy}>{busy?'Salvando…':'Salvar alterações'}</Button><Button variant="outline" onClick={onRecover} type="button">Redefinir senha</Button></form></div></main>;
 }
