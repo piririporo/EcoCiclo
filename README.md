@@ -6,23 +6,23 @@
 
 <div align="center">
 
-# ♻️ EcoCiclo
+# EcoCiclo
 
 ### Tecnologia que conecta reutilização, recuperação e economia circular.
 
 **Uma plataforma para dar uma nova oportunidade a equipamentos e componentes eletrônicos.**
 
-[![Status](https://img.shields.io/badge/status-em%20planejamento-164e3f?style=for-the-badge)](#-status-do-projeto)
-[![Foco](https://img.shields.io/badge/foco-economia%20circular-3cba71?style=for-the-badge)](#-impacto-que-buscamos)
-[![Projeto](https://img.shields.io/badge/projeto-sustentabilidade-0d9488?style=for-the-badge)](#-sobre-o-ecociclo)
+[![Status](https://img.shields.io/badge/status-em%20planejamento-164e3f?style=for-the-badge)](#status-do-projeto)
+[![Foco](https://img.shields.io/badge/foco-economia%20circular-3cba71?style=for-the-badge)](#impacto-que-buscamos)
+[![Projeto](https://img.shields.io/badge/projeto-sustentabilidade-0d9488?style=for-the-badge)](#sobre-o-ecociclo)
 
-**[Visão geral](#-sobre-o-ecociclo) · [Como funciona](#-como-funciona) · [Arquitetura](#-arquitetura-proposta) · [Modelo de dados](#-modelo-de-dados-conceitual) · [Roadmap](#-roadmap)**
+**[Visão geral](#sobre-o-ecociclo) · [Como funciona](#como-funciona) · [Arquitetura](#arquitetura-proposta) · [Modelo de dados](#modelo-de-dados-conceitual) · [Roadmap](#roadmap)**
 
 </div>
 
 ---
 
-## 🌎 Sobre o EcoCiclo
+## Sobre o EcoCiclo
 
 Um computador que parou de funcionar nem sempre virou lixo. Muitas vezes, a memória, o armazenamento, a fonte ou outras peças ainda podem ser utilizadas em reparos e novos projetos.
 
@@ -32,43 +32,43 @@ A proposta é desenvolver uma plataforma web em que pessoas e organizações pos
 
 > **Nossa ideia é simples:** antes de descartar um eletrônico, descobrir o que ainda pode ter valor e garantir um destino responsável para o restante.
 
-### 🎯 O problema que queremos resolver
+### O problema que queremos resolver
 
 - **Desperdício:** equipamentos inteiros são descartados mesmo quando parte de seus componentes ainda funciona.
 - **Falta de informação:** muitas pessoas não sabem o que pode ser recuperado nem como avaliar uma peça.
 - **Dificuldade de conexão:** quem tem peças sobrando nem sempre encontra quem precisa delas.
 - **Impacto ambiental:** o descarte inadequado de resíduos eletrônicos pode contaminar o ambiente e desperdiçar recursos.
 
-### 💡 Nossa proposta
+### Nossa proposta
 
 | Etapa | O que o EcoCiclo pretende oferecer | Valor gerado |
 |:--|:--|:--|
-| 📷 **Cadastrar** | Registro de equipamentos, fotos e informações sobre seu estado | Inventário de itens disponíveis |
-| 🧠 **Analisar** | Apoio de IA na identificação de aparelhos e possíveis componentes | Orientação inicial para triagem |
-| 🔧 **Recuperar** | Indicação de peças que merecem avaliação técnica | Incentivo ao reparo e reúso |
-| 🤝 **Conectar** | Divulgação de componentes para interessados | Circulação de peças utilizáveis |
-| 🌱 **Destinar** | Encaminhamento do que não pode ser aproveitado a parceiros adequados | Redução do descarte incorreto |
+| **Cadastrar** | Registro de equipamentos, fotos e informações sobre seu estado | Inventário de itens disponíveis |
+| **Analisar** | Apoio de IA na identificação de aparelhos e possíveis componentes | Orientação inicial para triagem |
+| **Recuperar** | Indicação de peças que merecem avaliação técnica | Incentivo ao reparo e reúso |
+| **Conectar** | Divulgação de componentes para interessados | Circulação de peças utilizáveis |
+| **Destinar** | Encaminhamento do que não pode ser aproveitado a parceiros adequados | Redução do descarte incorreto |
 
 ---
 
-## 🔄 Como funciona
+## Como funciona
 
 O fluxo abaixo descreve a **experiência planejada** para o usuário, do cadastro à destinação.
 
 ```mermaid
 flowchart TD
-    A["📱 Usuário possui um eletrônico sem uso"] --> B["📷 Cadastra o equipamento e envia fotos"]
-    B --> C["🧠 Sistema auxilia na identificação"]
-    C --> D["🔎 Triagem das peças e do estado do aparelho"]
+    A["Usuário possui um eletrônico sem uso"] --> B["Cadastra o equipamento e envia fotos"]
+    B --> C["Sistema auxilia na identificação"]
+    C --> D["Triagem das peças e do estado do aparelho"]
     D --> E{"Há componentes com potencial de reúso?"}
-    E -->|Sim| F["🛠️ Avaliação e confirmação técnica"]
+    E -->|Sim| F["Avaliação e confirmação técnica"]
     F --> G{"Componente aprovado?"}
-    G -->|Sim| H["🛒 Disponibilização para troca ou venda"]
-    G -->|Não| I["♻️ Destinação responsável"]
+    G -->|Sim| H["Disponibilização para troca ou venda"]
+    G -->|Não| I["Destinação responsável"]
     E -->|Não| I
-    H --> J["🤝 Conexão com interessados"]
-    J --> K["🔁 Nova vida útil para a peça"]
-    I --> L["🌿 Encaminhamento a parceiro adequado"]
+    H --> J["Conexão com interessados"]
+    J --> K["Nova vida útil para a peça"]
+    I --> L["Encaminhamento a parceiro adequado"]
 
     classDef start fill:#e6f6ed,stroke:#268253,color:#114d32
     classDef action fill:#e9f4f3,stroke:#218d82,color:#104c46
@@ -82,43 +82,43 @@ flowchart TD
 
 ---
 
-## ✨ Funcionalidades previstas
+## Funcionalidades previstas
 
 | Módulo | Descrição | Situação |
 |:--|:--|:--:|
-| **Contas e perfis** | Cadastro e acesso de usuários, técnicos e parceiros | 📋 Planejado |
-| **Inventário de eletrônicos** | Cadastro de equipamentos, fotos e características | 📋 Planejado |
-| **Triagem assistida por IA** | Identificação preliminar e sugestões de aproveitamento | 📋 Planejado |
-| **Catálogo de componentes** | Busca e filtros por tipo, condição e compatibilidade | 📋 Planejado |
-| **Anúncios** | Divulgação de peças recuperadas para interessados | 📋 Planejado |
-| **Destinação responsável** | Informações e integração futura com parceiros de reciclagem | 📋 Planejado |
-| **Painel de impacto** | Indicadores de itens recuperados e encaminhados | 📋 Planejado |
+| **Contas e perfis** | Cadastro e acesso de usuários, técnicos e parceiros | Planejado |
+| **Inventário de eletrônicos** | Cadastro de equipamentos, fotos e características | Planejado |
+| **Triagem assistida por IA** | Identificação preliminar e sugestões de aproveitamento | Planejado |
+| **Catálogo de componentes** | Busca e filtros por tipo, condição e compatibilidade | Planejado |
+| **Anúncios** | Divulgação de peças recuperadas para interessados | Planejado |
+| **Destinação responsável** | Informações e integração futura com parceiros de reciclagem | Planejado |
+| **Painel de impacto** | Indicadores de itens recuperados e encaminhados | Planejado |
 
 A implementação será realizada por etapas. A tabela representa o **escopo pretendido**, não uma lista de recursos disponíveis hoje.
 
 ---
 
-## 🧩 Arquitetura proposta
+## Arquitetura proposta
 
 A arquitetura abaixo é uma **referência conceitual**, independente de frameworks específicos. As ferramentas definitivas serão escolhidas durante o desenvolvimento.
 
 ```mermaid
 flowchart LR
     subgraph P["Pessoas e organizações"]
-        U["👤 Usuário"]
-        T["🔧 Técnico / parceiro"]
+        U["Usuário"]
+        T["Técnico / parceiro"]
     end
 
     subgraph WEB["Camada de aplicação"]
-        F["🌐 Interface web responsiva"]
-        API["⚙️ API e regras de negócio"]
+        F["Interface web responsiva"]
+        API["API e regras de negócio"]
     end
 
     subgraph S["Serviços e dados"]
-        AUTH["🔐 Autenticação"]
-        DB[("🗃️ Banco de dados")]
-        STORAGE[("🖼️ Fotos e arquivos")]
-        AI["🧠 Serviço de análise assistida"]
+        AUTH["Autenticação"]
+        DB[("Banco de dados")]
+        STORAGE[("Fotos e arquivos")]
+        AI["Serviço de análise assistida"]
     end
 
     U --> F
@@ -147,7 +147,7 @@ flowchart LR
 
 ---
 
-## 🗄️ Modelo de dados conceitual
+## Modelo de dados conceitual
 
 Este diagrama ER representa uma **proposta inicial de entidades e relacionamentos**. Não é o esquema de um banco já criado.
 
@@ -242,7 +242,7 @@ A estrutura poderá ser ajustada conforme decisões de produto, requisitos de se
 
 ---
 
-## 🤖 Exemplo ilustrativo de análise por IA
+## Exemplo ilustrativo de análise por IA
 
 A ideia é transformar fotos e informações de um aparelho em uma **triagem compreensível**, indicando o que merece inspeção.
 
@@ -281,30 +281,30 @@ A resposta não deve afirmar que uma peça funciona sem testes. Também é impor
 
 ---
 
-## 👥 Para quem é o EcoCiclo?
+## Para quem é o EcoCiclo?
 
 | Público | Possível benefício |
 |:--|:--|
-| 🏠 **Moradores** | Encontrar alternativas ao descarte de eletrônicos parados |
-| 🔧 **Técnicos e oficinas** | Encontrar peças para manutenção e recuperação |
-| 🎓 **Estudantes** | Acessar componentes para aprendizado e projetos |
-| 🏪 **Pequenos empreendedores** | Comprar, vender ou reaproveitar peças |
-| 🏭 **Recicladores e parceiros** | Receber encaminhamentos de itens não recuperáveis |
-| 🏙️ **Municípios** | Incentivar práticas de destinação adequada e economia circular |
+| **Moradores** | Encontrar alternativas ao descarte de eletrônicos parados |
+| **Técnicos e oficinas** | Encontrar peças para manutenção e recuperação |
+| **Estudantes** | Acessar componentes para aprendizado e projetos |
+| **Pequenos empreendedores** | Comprar, vender ou reaproveitar peças |
+| **Recicladores e parceiros** | Receber encaminhamentos de itens não recuperáveis |
+| **Municípios** | Incentivar práticas de destinação adequada e economia circular |
 
 ---
 
-## 🌱 Impacto que buscamos
+## Impacto que buscamos
 
 O EcoCiclo está alinhado à ideia de **economia circular**: manter produtos e materiais em uso pelo maior tempo possível, reduzir desperdício e melhorar o destino dos resíduos.
 
 ```mermaid
 flowchart LR
-    A["🔌 Equipamento sem uso"] --> B["🔍 Triagem"]
-    B --> C["🛠️ Recuperação"]
-    C --> D["♻️ Reutilização"]
-    D --> E["⌛ Maior vida útil"]
-    B --> F["🌱 Reciclagem adequada"]
+    A["Equipamento sem uso"] --> B["Triagem"]
+    B --> C["Recuperação"]
+    C --> D["Reutilização"]
+    D --> E["Maior vida útil"]
+    B --> F["Reciclagem adequada"]
     classDef eco fill:#e8f6ed,stroke:#378956,color:#144d31
     class A,B,C,D,E,F eco
 ```
@@ -321,7 +321,7 @@ flowchart LR
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] **Fase 1 · Fundação:** definir experiência do usuário, identidade visual e estrutura inicial do sistema.
 - [ ] **Fase 2 · Cadastro:** autenticação, perfis e registro de equipamentos com fotografias.
@@ -335,7 +335,7 @@ A ordem pode mudar conforme a validação do projeto e as prioridades de desenvo
 
 ---
 
-## 🚧 Status do projeto
+## Status do projeto
 
 **Em planejamento / documentação inicial.**
 
@@ -343,7 +343,7 @@ Atualmente, este repositório contém a apresentação do projeto. A documentaç
 
 Quando houver código publicado, esta seção será atualizada com tecnologias utilizadas, requisitos, instalação local, variáveis de ambiente **sem valores secretos** e instruções de execução/deploy.
 
-### 🤝 Como colaborar
+### Como colaborar
 
 Ideias sobre reaproveitamento, experiência de uso, acessibilidade, triagem e destinação de resíduos são bem-vindas. Você pode propor melhorias por meio das [issues do repositório](https://github.com/piririporo/EcoCiclo/issues), quando habilitadas.
 
@@ -351,12 +351,12 @@ Ideias sobre reaproveitamento, experiência de uso, acessibilidade, triagem e de
 
 <div align="center">
 
-### ♻️ EcoCiclo
+### EcoCiclo
 
 **Menos descarte. Mais possibilidades.**
 
 *Porque o fim de um equipamento não precisa ser o fim de todos os seus componentes.*
 
-[⬆️ Voltar ao início](#️-ecociclo)
+[Voltar ao início](#ecociclo)
 
 </div>
