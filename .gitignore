@@ -7,3 +7,6 @@ out/
 .DS_Store
 supabase/.temp/
 test-results/
+apps/mobile/.expo/
+apps/mobile/node_modules/
+apps/mobile/.env

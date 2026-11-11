@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "EcoCiclo",
+    "slug": "ecociclo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "ecociclo",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "br.com.ecociclo.app" },
+    "android": { "package": "br.com.ecociclo.app" }
+  }
+}
