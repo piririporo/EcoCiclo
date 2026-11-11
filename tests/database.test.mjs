@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,readdir} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 const ids={owner:'10000000-0000-4000-8000-000000000001',buyer:'10000000-0000-4000-8000-000000000002',tech:'10000000-0000-4000-8000-000000000003',admin:'10000000-0000-4000-8000-000000000004',recycler:'10000000-0000-4000-8000-000000000005',pending:'10000000-0000-4000-8000-000000000006'};
 test('database enforces ownership, verified evaluation, atomic checkout, cancellation and documented recycling',async()=>{
  const pg=new PGlite();
  try{
- await pg.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}',email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;create function storage.foldername(name text) returns text[] language sql immutable as $$select (string_to_array(name,'/'))[1:array_length(string_to_array(name,'/'),1)-1]$$;`);
- const sql=await readFile(new URL('../supabase/migrations/20261110235412_ecociclo_foundation.sql',import.meta.url),'utf8');
+ await pg.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}',raw_app_meta_data jsonb not null default '{}',email text unique,email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;create function storage.foldername(name text) returns text[] language sql immutable as $$select (string_to_array(name,'/'))[1:array_length(string_to_array(name,'/'),1)-1]$$;`);
+ const sql=await readFile(new URL('../supabase/migrations/20261111123448_ecociclo_foundation.sql',import.meta.url),'utf8');
  await pg.exec(sql);
  await pg.query('insert into auth.users(id) values($1)',[ids.pending]);
- await pg.exec(await readFile(new URL('../supabase/migrations/20261111121140_authenticated_access_and_staff_roles.sql',import.meta.url),'utf8'));
+ await pg.exec(await readFile(new URL('../supabase/migrations/20261111123507_authenticated_access_and_staff_roles.sql',import.meta.url),'utf8'));
  for(const [name,id] of Object.entries(ids)){
   if(name==='pending')continue;
   await pg.query('insert into auth.users(id,raw_user_meta_data,email_confirmed_at) values($1,$2,now())',[id,JSON.stringify({display_name:name==='buyer'?'A':'Test '+name,role:'admin'})]);
@@ -77,5 +77,47 @@ test('database enforces ownership, verified evaluation, atomic checkout, cancell
  assert.ok((await as(ids.admin,'select * from public.audit_logs')).rows.length>0);
  assert.equal((await as(ids.admin,"select actor_id from public.audit_logs where table_name='user_roles' and action='DELETE' and record_id=$1",[ids.recycler])).rows[0].actor_id,ids.admin);
  assert.equal((await as(ids.owner,'select * from public.audit_logs')).rows.length,0);
+ const migrations=new URL('../supabase/migrations/',import.meta.url);
+ const invites=(await readdir(migrations)).find(file=>file.endsWith('_admin_account_invites.sql'));
+ assert.ok(invites);
+ await pg.exec(await readFile(new URL(invites,migrations),'utf8'));
+ await pg.query("insert into public.user_roles values($1,'primary_admin')",[ids.admin]);
+
+ await assert.rejects(as(ids.owner,"select public.issue_account_invite('new@example.test','New user')"),/exclusivo/);
+ await assert.rejects(as(ids.owner,"select public.find_account_invite('untrusted')"),/permission denied/);
+ await assert.rejects(pg.query("insert into auth.users(id,email,raw_user_meta_data) values(gen_random_uuid(),'new@example.test',$1)",[JSON.stringify({ecociclo_invite_id:'client-input'})]),/exige um convite/);
+ await as(ids.admin,"select public.grant_role($1,'admin',true)",[ids.tech]);
+ await assert.rejects(as(ids.tech,"select public.grant_role($1,'admin',false)",[ids.admin]),/administrador principal/);
+ await assert.rejects(as(ids.admin,"select public.grant_role($1,'admin',false)",[ids.admin]),/próprio/);
+
+ async function inviteFor(email) {
+  return (await as(ids.admin,"select public.issue_account_invite($1,'New user') as token",[email])).rows[0].token;
+ }
+ async function findInvite(token) {
+  await pg.exec('set role service_role');
+  try { return (await pg.query('select * from public.find_account_invite($1)',[token])).rows[0]; }
+  finally { await pg.exec('reset role'); }
+ }
+ const oldToken=await inviteFor('new@example.test');
+ const oldInvite=await findInvite(oldToken);
+ const token=await inviteFor('new@example.test');
+ assert.match(token,/^[a-f0-9]{64}$/);
+ assert.equal(await findInvite(oldToken),undefined);
+ const invite=await findInvite(token);
+ assert.notEqual(invite.id,oldInvite.id);
+ const activate=(id,email=invite.email)=>pg.query("insert into auth.users(id,email,raw_app_meta_data,email_confirmed_at) values(gen_random_uuid(),$1,jsonb_build_object('ecociclo_invite_id',$2::text),now()) returning id",[email,id]);
+ await assert.rejects(activate(oldInvite.id),/exige um convite/);
+ await assert.rejects(activate(invite.id,'other@example.test'),/exige um convite/);
+ const newAccount=(await activate(invite.id)).rows[0].id;
+ assert.equal(await findInvite(token),undefined);
+ await assert.rejects(activate(invite.id),/exige um convite/);
+ assert.deepEqual((await as(newAccount,'select role from public.user_roles')).rows,[{role:'user'}]);
+ await assert.rejects(inviteFor('new@example.test'),/Já existe/);
+ const expired=await inviteFor('expired@example.test');
+ const expiredInvite=await findInvite(expired);
+ await pg.query("update private.account_invites set expires_at=now() - interval '1 minute' where id=$1",[expiredInvite.id]);
+ assert.equal(await findInvite(expired),undefined);
+ await assert.rejects(activate(expiredInvite.id,expiredInvite.email),/exige um convite/);
+
  }finally{await pg.close();}
 });

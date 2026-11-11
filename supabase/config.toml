@@ -1,0 +1,4 @@
+project_id = "ecociclo"
+
+[functions.activate-account]
+verify_jwt = false

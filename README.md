@@ -138,7 +138,7 @@ flowchart LR
 
 ## Modelo de dados conceitual
 
-Este diagrama ER resume o modelo conceitual do EcoCiclo. Consulte a [migração SQL](supabase/migrations/20261110235412_ecociclo_foundation.sql) para ver as tabelas, relações e políticas da implementação.
+Este diagrama ER resume o modelo conceitual do EcoCiclo. Consulte a [migração SQL](supabase/migrations/20261111123448_ecociclo_foundation.sql) para ver as tabelas, relações e políticas da implementação.
 
 ```mermaid
 erDiagram
@@ -341,9 +341,10 @@ Abra `http://localhost:3000`. A entrada do EcoCiclo exige uma sessão com e-mail
 
 ### Autenticação e administração
 
-1. Aplique as [migrações do EcoCiclo](supabase/migrations/) em ordem no projeto Supabase.
-2. Nas configurações do Supabase Auth, use o domínio de produção como **Site URL** e autorize os redirecionamentos completos para `/conta/` em produção e desenvolvimento. Mantenha a confirmação por e-mail habilitada e configure SMTP para receber cadastros externos. Os links de confirmação e recuperação usam PKCE e devem ser abertos no navegador em que foram solicitados.
-3. O proprietário do banco deve conceder o papel inicial `admin` a uma conta identificada e com e-mail confirmado. Novas contas recebem somente o papel `user`. A partir do primeiro administrador, use **Administração → Pessoas e permissões** para gerenciar os papéis.
+1. Aplique as [migrações do EcoCiclo](supabase/migrations/) em ordem e publique a função `activate-account` no mesmo projeto Supabase. A função recebe um convite de uso único antes da autenticação e precisa ser implantada com `verify_jwt` desativado. A validação do convite ocorre no banco e a chave administrativa fica no ambiente da função.
+2. Use o domínio de produção como **Site URL** no Supabase Auth e autorize os redirecionamentos completos para `/conta/` em produção e desenvolvimento. Configure SMTP para a recuperação de senha. O link de recuperação usa PKCE e deve ser aberto no navegador em que foi solicitado.
+3. O proprietário do banco deve inicializar os papéis `admin` e `primary_admin` para a conta verificada que administrará o projeto. Existe apenas um administrador principal, que gerencia o papel `admin`.
+4. Em **Administração → Convidar uma pessoa**, informe o nome e o e-mail e compartilhe o link individual em particular. O convite expira em 24 horas, pode ser usado uma vez e permite à pessoa definir a própria senha. A conta nasce com o papel `user`.
 
 | Papel | Acesso |
 | --- | --- |
@@ -351,6 +352,7 @@ Abra `http://localhost:3000`. A entrada do EcoCiclo exige uma sessão com e-mail
 | Técnico | Avaliação de equipamentos enviados à equipe técnica |
 | Parceiro | Encaminhamentos atribuídos à sua organização ativa |
 | Administrador | Permissões, avaliações, catálogo, denúncias, parceiros e auditoria |
+| Administrador principal | Permissões administrativas e gestão dos demais administradores |
 
 ```sh
 npm run typecheck

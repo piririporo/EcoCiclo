@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { isAuthError } from '@supabase/supabase-js';
+import { FunctionsHttpError, isAuthError } from '@supabase/supabase-js';
 import { ArrowRight, Camera, Eye, EyeOff, LogOut, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { usePlatform } from './platform-provider';
@@ -11,11 +11,11 @@ import { db } from '@/lib/supabase';
 import { errorMessage } from '@/lib/utils';
 import { validatePhotos } from '@/lib/domain.mjs';
 
-type Mode = 'login' | 'signup' | 'forgot';
+type Mode = 'login' | 'invite' | 'forgot';
 const minimumPasswordLength = 12;
 const copy = {
   login: ['Entre no EcoCiclo', 'Acesse sua conta para acompanhar equipamentos e encontrar componentes.', 'Entrar'],
-  signup: ['Crie sua conta', 'Use um e-mail ao qual você tenha acesso para confirmar o cadastro.', 'Criar conta'],
+  invite: ['Ative sua conta', 'Defina a senha da conta criada por convite da administração.', 'Ativar conta'],
   forgot: ['Recupere seu acesso', 'Enviaremos um link para redefinir sua senha.', 'Enviar link'],
   reset: ['Escolha uma nova senha', 'Use pelo menos 12 caracteres para proteger sua conta.', 'Salvar nova senha'],
 };
@@ -25,7 +25,7 @@ function authErrorMessage(error: unknown, mode: Mode | 'reset') {
     if (error.status === 429) return 'Muitas tentativas. Aguarde um pouco antes de tentar novamente.';
     if (error.code === 'weak_password') return 'Escolha uma senha mais forte com pelo menos 12 caracteres.';
     if (mode === 'login' && ['invalid_credentials', 'email_not_confirmed', 'user_banned'].includes(error.code ?? '')) {
-      return 'Não foi possível entrar. Confira seu e-mail e sua senha e verifique se o cadastro foi confirmado.';
+      return 'Não foi possível entrar. Confira seu e-mail e sua senha e verifique se sua conta já foi ativada.';
     }
   }
   return mode === 'reset'
@@ -37,6 +37,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   const { session, user } = usePlatform();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
+  const [inviteToken, setInviteToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -44,14 +45,30 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const submitting = useRef(false);
   const activeMode = session.recovering ? 'reset' : mode;
+  const newPassword = activeMode === 'reset' || activeMode === 'invite';
   const [title, description, action] = copy[activeMode];
   const ready = Boolean(db) && session.status !== 'checking' && session.status !== 'unavailable'
-    && (!session.recovering || Boolean(session.user));
+    && (!session.recovering || Boolean(session.user)) && (activeMode !== 'invite' || Boolean(inviteToken));
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    if (url.searchParams.get('mode') === 'cadastro') setMode('signup');
-  }, []);
+    if (!account) return;
+    function readInvite() {
+      const token = new URLSearchParams(window.location.hash.slice(1)).get('convite');
+      if (token === null) return;
+      setMode('invite');
+      setSuccess('');
+      if (/^[a-f0-9]{64}$/.test(token)) {
+        setInviteToken(token);
+        setError('');
+      } else {
+        setInviteToken('');
+        setError('Este link de convite é inválido. Solicite um novo convite à administração.');
+      }
+    }
+    readInvite();
+    window.addEventListener('hashchange', readInvite);
+    return () => window.removeEventListener('hashchange', readInvite);
+  }, [account]);
 
   useEffect(() => {
     if (!account || session.status === 'checking') return;
@@ -70,6 +87,12 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   }, [account, session.status]);
 
   function changeMode(next: Mode) {
+    if (mode === 'invite') {
+      setInviteToken('');
+      const url = new URL(window.location.href);
+      url.hash = '';
+      window.history.replaceState(window.history.state, '', url);
+    }
     setMode(next);
     setShowPassword(false);
     setError('');
@@ -109,11 +132,15 @@ export function AuthPage({ account = false }: { account?: boolean }) {
     const password = String(form.get('password') ?? '');
     const callback = new URL('/conta/', window.location.origin).href;
 
-    if ((activeMode === 'signup' || activeMode === 'reset') && password.length < minimumPasswordLength) {
+    if (newPassword && password.length < minimumPasswordLength) {
       setError('Use pelo menos 12 caracteres na nova senha.');
       return;
     }
-    if (activeMode === 'reset' && password !== form.get('confirmation')) {
+    if (newPassword && new TextEncoder().encode(password).length > 72) {
+      setError('A senha ficou longa demais. Tente reduzir o tamanho.');
+      return;
+    }
+    if (newPassword && password !== form.get('confirmation')) {
       setError('As senhas precisam ser iguais.');
       return;
     }
@@ -128,17 +155,13 @@ export function AuthPage({ account = false }: { account?: boolean }) {
           if (account) router.replace('/painel/');
           break;
         }
-        case 'signup': {
-          const name = String(form.get('name') ?? '').trim();
-          if (name.length < 2) {
-            setError('Informe um nome com pelo menos dois caracteres.');
-            break;
-          }
-          const { error } = await db.auth.signUp({
-            email, password, options: { data: { display_name: name }, emailRedirectTo: callback },
+        case 'invite': {
+          const { error } = await db.functions.invoke('activate-account', {
+            body: { token: inviteToken, password },
           });
-          if (error && !['user_already_exists', 'email_exists'].includes(error.code ?? '')) throw error;
-          setSuccess('Se o cadastro puder ser confirmado, você receberá um e-mail. Abra o link neste mesmo navegador.');
+          if (error) throw error;
+          changeMode('login');
+          setSuccess('Conta ativada. Você já pode entrar com seu e-mail e sua senha.');
           break;
         }
         case 'forgot': {
@@ -157,6 +180,13 @@ export function AuthPage({ account = false }: { account?: boolean }) {
         }
       }
     } catch (error) {
+      if (activeMode === 'invite' && error instanceof FunctionsHttpError) {
+        const result = await error.context.json().catch(() => null);
+        if (typeof result?.message === 'string') {
+          setError(result.message);
+          return;
+        }
+      }
       setError(authErrorMessage(error, activeMode));
     } finally {
       submitting.current = false;
@@ -164,7 +194,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
     }
   }
 
-  if (user && account && mode !== 'forgot') return <ProfilePage key={user.id} onRecover={() => changeMode('forgot')} />;
+  if (user && account && mode === 'login' && !success) return <ProfilePage key={user.id} onRecover={() => changeMode('forgot')} />;
 
   return (
     <main id="main" className="container auth-main">
@@ -193,10 +223,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
               <div className="notice-box">A senha foi alterada. Encerre as sessões para entrar novamente.</div>
             ) : (
               <form key={activeMode} method="post" onSubmit={submit} className="auth-form" aria-busy={busy}>
-                {activeMode === 'signup' && (
-                  <label>Seu nome<input name="name" autoComplete="name" required minLength={2} maxLength={120} /></label>
-                )}
-                {activeMode !== 'reset' && (
+                {!newPassword && (
                   <label>
                     E-mail
                     <input name="email" autoComplete="username" type="email" required maxLength={254}
@@ -206,14 +233,14 @@ export function AuthPage({ account = false }: { account?: boolean }) {
                 {activeMode !== 'forgot' && (
                   <>
                     <div className="password-label">
-                      <label htmlFor="auth-password">{activeMode === 'reset' ? 'Nova senha' : 'Senha'}</label>
+                      <label htmlFor="auth-password">{newPassword ? 'Nova senha' : 'Senha'}</label>
                       {activeMode === 'login' && <button type="button" disabled={busy} onClick={() => changeMode('forgot')}>Esqueci minha senha</button>}
                     </div>
                     <div className="password-field">
                       <input id="auth-password" name="password" type={showPassword ? 'text' : 'password'}
                         autoComplete={activeMode === 'login' ? 'current-password' : 'new-password'}
-                        required minLength={activeMode === 'login' ? undefined : minimumPasswordLength}
-                        maxLength={128} aria-describedby={activeMode === 'signup' ? 'auth-password-help' : undefined} />
+                        required minLength={newPassword ? minimumPasswordLength : undefined}
+                        maxLength={newPassword ? 72 : 128} aria-describedby={activeMode === 'invite' ? 'auth-password-help' : undefined} />
                       <button type="button" className="icon-button" aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                         onClick={() => setShowPassword(value => !value)}>
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -221,14 +248,14 @@ export function AuthPage({ account = false }: { account?: boolean }) {
                     </div>
                   </>
                 )}
-                {activeMode === 'signup' && <small id="auth-password-help" className="muted">Use pelo menos 12 caracteres.</small>}
-                {activeMode === 'reset' && (
+                {activeMode === 'invite' && <small id="auth-password-help" className="muted">Use pelo menos 12 caracteres.</small>}
+                {newPassword && (
                   <label>
                     Confirme a nova senha
-                    <input name="confirmation" type="password" autoComplete="new-password" required minLength={minimumPasswordLength} maxLength={128} />
+                    <input name="confirmation" type="password" autoComplete="new-password" required minLength={minimumPasswordLength} maxLength={72} />
                   </label>
                 )}
-                {activeMode === 'signup' && (
+                {activeMode === 'invite' && (
                   <label className="checkbox-label">
                     <input type="checkbox" required />
                     <span>Li e aceito os <Link href="/termos/" target="_blank" rel="noopener noreferrer">termos de uso</Link> e a <Link href="/privacidade/" target="_blank" rel="noopener noreferrer">política de privacidade</Link>.</span>
@@ -244,7 +271,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
             {passwordChanged && error && <p className="form-error" role="alert">{error}</p>}
             <div className="auth-switch">
               {activeMode === 'login' ? (
-                <button type="button" disabled={busy} onClick={() => changeMode('signup')}>Criar uma conta</button>
+                <span>Precisa de acesso? Solicite um convite à administração.</span>
               ) : activeMode === 'reset' ? (
                 <button type="button" disabled={busy || !ready} onClick={() => void cancelRecovery()}>
                   {passwordChanged ? 'Encerrar sessões' : 'Cancelar redefinição'}
@@ -255,7 +282,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
             </div>
           </>
         )}
-        <div className="auth-security"><ShieldCheck size={15} aria-hidden="true" />Acesso com e-mail verificado</div>
+        <div className="auth-security"><ShieldCheck size={15} aria-hidden="true" />Acesso por convite</div>
       </section>
     </main>
   );
