@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+const ids={owner:'10000000-0000-4000-8000-000000000001',buyer:'10000000-0000-4000-8000-000000000002',tech:'10000000-0000-4000-8000-000000000003',admin:'10000000-0000-4000-8000-000000000004'};
+test('database enforces ownership, verified evaluation, atomic checkout, cancellation and documented recycling',async()=>{
+ const pg=new PGlite();
+ try{
+ await pg.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}');create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;create function storage.foldername(name text) returns text[] language sql immutable as $$select (string_to_array(name,'/'))[1:array_length(string_to_array(name,'/'),1)-1]$$;`);
+ const sql=await readFile(new URL('../supabase/migrations/20261110235412_ecociclo_foundation.sql',import.meta.url),'utf8');
+ await pg.exec(sql);
+ for(const [name,id] of Object.entries(ids))await pg.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)',[id,JSON.stringify({display_name:'Test '+name})]);
+ await pg.query("insert into public.user_roles(user_id,role) values($1,'technician'),($2,'admin')",[ids.tech,ids.admin]);
+ async function as(uid,sql,params=[]){await pg.exec('set role authenticated');await pg.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);try{return await pg.query(sql,params);}finally{await pg.exec('reset role');}}
+ const d=(await as(ids.owner,"insert into public.devices(owner_id,type,brand,model,defect) values($1,'Notebook','Test brand','Test model','Does not power on when plugged in') returning id",[ids.owner])).rows[0].id;
+ assert.equal((await as(ids.buyer,'select * from public.devices where id=$1',[d])).rows.length,0,'other accounts cannot read a device');
+ await assert.rejects(as(ids.owner,"update public.devices set status='approved' where id=$1",[d]),/row-level security/);
+ await assert.rejects(as(ids.owner,"insert into public.user_roles values($1,'admin')",[ids.owner]),/permission denied/);
+ await assert.rejects(as(ids.owner,'select public.submit_device($1)',[d]),/fotografia/);
+ const photo=`${ids.owner}/${d}/front.jpg`;
+ await as(ids.owner,"insert into storage.objects(bucket_id,name) values('device-images',$1)",[photo]);
+ await as(ids.owner,'insert into public.device_images(device_id,owner_id,storage_path) values($1,$2,$3)',[d,ids.owner,photo]);
+ await as(ids.owner,'select public.submit_device($1)',[d]);
+ assert.equal((await as(ids.tech,'select status from public.devices where id=$1',[d])).rows[0].status,'awaiting_technical');
+ const evaluated=[{name:'Test DDR4 SODIMM 8 GB',category:'Memórias RAM',brand:'Test',model:'DDR4',condition:'Bom',result:'approved',procedure:'Test fixture: ran memory diagnostics for two full passes without errors.',notes:'Local test fixture, never a real listing.',mass_grams:12,specifications:{Tipo:'DDR4',Capacidade:'8 GB',Formato:'SODIMM'}}];
+ await assert.rejects(as(ids.owner,'select public.record_evaluation($1,$2)',[d,JSON.stringify(evaluated)]),/técnicos autorizados/);
+ await as(ids.tech,'select public.record_evaluation($1,$2)',[d,JSON.stringify(evaluated)]);
+ const component=(await as(ids.owner,'select id from public.components where device_id=$1',[d])).rows[0].id;
+ await assert.rejects(as(ids.buyer,'select public.publish_component($1,100,1,\'Test city\')',[component]),/responsável/);
+ const listing=(await as(ids.owner,"select public.publish_component($1,100,1,'Test city') as id",[component])).rows[0].id;
+ await as(ids.buyer,'insert into public.cart_items(user_id,listing_id,quantity) values($1,$2,1)',[ids.buyer,listing]);
+ await assert.rejects(as(ids.buyer,"select public.checkout_cart('{}'::jsonb)"),/endereço válido/);
+ const address={recipient:'Local fixture',street:'Test street 123',city:'Test city',postal_code:'79900000'};
+ const order=(await as(ids.buyer,'select public.checkout_cart($1) as id',[JSON.stringify(address)])).rows[0].id;
+ assert.equal((await as(ids.buyer,'select status,total from public.orders where id=$1',[order])).rows[0].status,'pending_confirmation','orders must never become paid without provider confirmation');
+ assert.equal(Number((await pg.query('select quantity from public.product_listings where id=$1',[listing])).rows[0].quantity),0,'stock reserved in the transaction');
+ await assert.rejects(as(ids.buyer,'insert into public.cart_items(user_id,listing_id,quantity) values($1,$2,1)',[ids.buyer,listing]),/row-level security/);
+ await assert.rejects(as(ids.owner,'select public.cancel_order($1)',[order]),/não encontrado/);
+ await as(ids.buyer,'select public.cancel_order($1)',[order]);
+ assert.equal(Number((await pg.query('select quantity from public.product_listings where id=$1',[listing])).rows[0].quantity),1,'cancellation restores exactly one unit');
+ await assert.rejects(as(ids.buyer,'select public.cancel_order($1)',[order]),/não pode/);
+ const req=(await as(ids.owner,'insert into public.recycling_requests(device_id,owner_id) values($1,$2) returning id',[d,ids.owner])).rows[0].id;
+ const partner=(await as(ids.admin,"insert into public.recycling_partners(name,city,user_id) values('Local test partner','Test city',$1) returning id",[ids.admin])).rows[0].id;
+ await as(ids.admin,'select public.assign_recycling($1,$2)',[req,partner]);
+ await assert.rejects(as(ids.owner,"select public.advance_recycling($1,'confirmed',12,'fake.pdf')",[req]),/restrito/);
+ await as(ids.admin,"select public.advance_recycling($1,'requested')",[req]);
+ await as(ids.admin,"select public.advance_recycling($1,'received')",[req]);
+ await assert.rejects(as(ids.admin,"select public.advance_recycling($1,'confirmed',12,'fake.pdf')",[req]),/comprovante válido/);
+ const proof=`${ids.admin}/${req}/proof.pdf`;await as(ids.admin,"insert into storage.objects(bucket_id,name) values('recycling-proofs',$1)",[proof]);
+ await as(ids.admin,"select public.advance_recycling($1,'confirmed',12,$2)",[req,proof]);
+ await pg.exec('set role anon');await pg.query("select set_config('request.jwt.claim.sub','',false)");const metrics=(await pg.query('select public.impact_metrics() as data')).rows[0].data;await pg.exec('reset role');
+ assert.equal(metrics.devices,1);assert.equal(metrics.recovered,1);assert.equal(metrics.sold,0);assert.equal(Number(metrics.recycled_kg),.012);assert.equal(metrics.months.length,12);
+ assert.ok((await as(ids.admin,'select * from public.audit_logs')).rows.length>0);
+ assert.equal((await as(ids.owner,'select * from public.audit_logs')).rows.length,0);
+ }finally{await pg.close();}
+});

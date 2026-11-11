@@ -1,9 +1,3 @@
-<!--
-  EcoCiclo • README do projeto
-  Os fluxos e modelos abaixo documentam a proposta da plataforma.
-  Eles não representam funcionalidades já implementadas neste repositório.
--->
-
 <div align="center">
 
 # EcoCiclo
@@ -12,11 +6,11 @@
 
 **Uma plataforma para dar uma nova oportunidade a equipamentos e componentes eletrônicos.**
 
-[![Status](https://img.shields.io/badge/status-em%20planejamento-164e3f?style=for-the-badge)](#status-do-projeto)
+[![Status](https://img.shields.io/badge/status-MVP-164e3f?style=for-the-badge)](#status-do-projeto)
 [![Foco](https://img.shields.io/badge/foco-economia%20circular-3cba71?style=for-the-badge)](#impacto-que-buscamos)
 [![Projeto](https://img.shields.io/badge/projeto-sustentabilidade-0d9488?style=for-the-badge)](#sobre-o-ecociclo)
 
-**[Visão geral](#sobre-o-ecociclo) · [Como funciona](#como-funciona) · [Arquitetura](#arquitetura-proposta) · [Modelo de dados](#modelo-de-dados-conceitual) · [Roadmap](#roadmap)**
+**[Visão geral](#sobre-o-ecociclo) · [Como funciona](#como-funciona) · [Arquitetura](#arquitetura) · [Modelo de dados](#modelo-de-dados-conceitual) · [Executar localmente](#executar-localmente) · [Roadmap](#roadmap)**
 
 </div>
 
@@ -53,7 +47,7 @@ A proposta é desenvolver uma plataforma web em que pessoas e organizações pos
 
 ## Como funciona
 
-O fluxo abaixo descreve a **experiência planejada** para o usuário, do cadastro à destinação.
+O fluxo abaixo mostra o percurso do cadastro à destinação. A identificação inicial é manual no MVP. A triagem assistida por IA faz parte do roadmap.
 
 ```mermaid
 flowchart TD
@@ -78,29 +72,29 @@ flowchart TD
     class I endnode
 ```
 
-> A **IA funciona como apoio**, não como certificação. A identificação automática pode apresentar erros; segurança, funcionalidade e possibilidade de revenda exigem verificação apropriada.
+> A avaliação técnica verifica o estado e o funcionamento das peças antes da publicação no catálogo.
 
 ---
 
-## Funcionalidades previstas
+## Funcionalidades
 
 | Módulo | Descrição | Situação |
 |:--|:--|:--:|
-| **Contas e perfis** | Cadastro e acesso de usuários, técnicos e parceiros | Planejado |
-| **Inventário de eletrônicos** | Cadastro de equipamentos, fotos e características | Planejado |
+| **Contas e perfis** | Cadastro, recuperação de senha e perfis com papéis distintos | Implementado |
+| **Inventário de eletrônicos** | Cadastro de equipamentos, fotos privadas e solicitação de avaliação | Implementado |
 | **Triagem assistida por IA** | Identificação preliminar e sugestões de aproveitamento | Planejado |
-| **Catálogo de componentes** | Busca e filtros por tipo, condição e compatibilidade | Planejado |
-| **Anúncios** | Divulgação de peças recuperadas para interessados | Planejado |
-| **Destinação responsável** | Informações e integração futura com parceiros de reciclagem | Planejado |
-| **Painel de impacto** | Indicadores de itens recuperados e encaminhados | Planejado |
+| **Catálogo de componentes** | Busca, filtros, detalhes da avaliação e favoritos | Implementado |
+| **Anúncios e pedidos** | Publicação de componentes aprovados, carrinho e reserva de estoque | Implementado |
+| **Destinação responsável** | Encaminhamentos e confirmação com comprovante | Implementado |
+| **Painel de impacto** | Indicadores agregados de recuperação e destinação | Implementado |
 
-A implementação será realizada por etapas. A tabela representa o **escopo pretendido**, não uma lista de recursos disponíveis hoje.
+Os módulos que usam autenticação ou dados precisam de um projeto Supabase configurado com a migração deste repositório.
 
 ---
 
-## Arquitetura proposta
+## Arquitetura
 
-A arquitetura abaixo é uma **referência conceitual**, independente de frameworks específicos. As ferramentas definitivas serão escolhidas durante o desenvolvimento.
+A interface usa Next.js, React, TypeScript e Tailwind CSS. O Supabase fornece autenticação, PostgreSQL, armazenamento privado de fotos e funções para operações como avaliação técnica e reserva de estoque.
 
 ```mermaid
 flowchart LR
@@ -110,30 +104,25 @@ flowchart LR
     end
 
     subgraph WEB["Camada de aplicação"]
-        F["Interface web responsiva"]
-        API["API e regras de negócio"]
+        F["Interface Next.js"]
     end
 
     subgraph S["Serviços e dados"]
-        AUTH["Autenticação"]
-        DB[("Banco de dados")]
-        STORAGE[("Fotos e arquivos")]
-        AI["Serviço de análise assistida"]
+        AUTH["Supabase Auth"]
+        DB[("PostgreSQL e funções RPC")]
+        STORAGE[("Supabase Storage")]
     end
 
     U --> F
     T --> F
-    F <--> API
-    API <--> AUTH
-    API <--> DB
-    API <--> STORAGE
-    API --> AI
-    AI --> API
+    F <--> AUTH
+    F <--> DB
+    F <--> STORAGE
 
     classDef interface fill:#e6f6ed,stroke:#328f63,color:#174f35
     classDef service fill:#e9f4f3,stroke:#21958a,color:#15564f
     class F interface
-    class API,AUTH,DB,STORAGE,AI service
+    class AUTH,DB,STORAGE service
 ```
 
 ### Princípios de implementação
@@ -149,7 +138,7 @@ flowchart LR
 
 ## Modelo de dados conceitual
 
-Este diagrama ER representa uma **proposta inicial de entidades e relacionamentos**. Não é o esquema de um banco já criado.
+Este diagrama ER resume o modelo conceitual do EcoCiclo. Consulte a [migração SQL](supabase/migrations/20261110235412_ecociclo_foundation.sql) para ver as tabelas, relações e políticas da implementação.
 
 ```mermaid
 erDiagram
@@ -323,12 +312,12 @@ flowchart LR
 
 ## Roadmap
 
-- [ ] **Fase 1 · Fundação:** definir experiência do usuário, identidade visual e estrutura inicial do sistema.
-- [ ] **Fase 2 · Cadastro:** autenticação, perfis e registro de equipamentos com fotografias.
-- [ ] **Fase 3 · Catálogo:** cadastro de componentes, filtros e anúncios.
+- [x] **Fase 1 · Fundação:** definir experiência do usuário, identidade visual e estrutura inicial do sistema.
+- [x] **Fase 2 · Cadastro:** autenticação, perfis e registro de equipamentos com fotografias.
+- [x] **Fase 3 · Catálogo:** cadastro de componentes, filtros e anúncios.
 - [ ] **Fase 4 · Inteligência:** implementar triagem assistida com validação técnica.
 - [ ] **Fase 5 · Conexões:** facilitar contato entre interessados e parceiros.
-- [ ] **Fase 6 · Impacto:** criar painel com métricas confiáveis de reaproveitamento e destinação.
+- [x] **Fase 6 · Impacto:** criar painel com métricas de reaproveitamento e destinação.
 - [ ] **Fase 7 · Evolução:** testar com usuários, aprimorar acessibilidade, segurança e desempenho.
 
 A ordem pode mudar conforme a validação do projeto e as prioridades de desenvolvimento.
@@ -337,11 +326,26 @@ A ordem pode mudar conforme a validação do projeto e as prioridades de desenvo
 
 ## Status do projeto
 
-**Em planejamento / documentação inicial.**
+O MVP inclui cadastro de eletrônicos com fotos, avaliação técnica, catálogo, pedidos com reserva de estoque e encaminhamento para destinação. A análise por IA e a cobrança online seguem pendentes.
 
-Atualmente, este repositório contém a apresentação do projeto. A documentação de fluxos, dados e arquitetura mostra **como pretendemos construir** o EcoCiclo; ela não significa que a interface, a API, o banco de dados ou a IA já estejam implementados.
+## Executar localmente
 
-Quando houver código publicado, esta seção será atualizada com tecnologias utilizadas, requisitos, instalação local, variáveis de ambiente **sem valores secretos** e instruções de execução/deploy.
+Use Node.js 22 ou superior e npm. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com a URL e a chave publicável do seu projeto Supabase.
+
+```sh
+npm ci
+npm run dev
+```
+
+Abra `http://localhost:3000`. Para habilitar cadastro e persistência, aplique a [migração inicial](supabase/migrations/20261110235412_ecociclo_foundation.sql) ao projeto Supabase e autorize o redirecionamento de autenticação para `/conta/` nas URLs de desenvolvimento e produção. A migração do ambiente hospedado e a entrega de e-mails de autenticação estão pendentes de validação.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+```
+
+O build exporta o site estático para `out/`. Na Vercel, configure as mesmas variáveis públicas no ambiente de build. O [registro de implementação](docs/IMPLEMENTATION.md) detalha os testes e as decisões do projeto.
 
 ### Como colaborar
 
