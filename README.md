@@ -84,11 +84,23 @@ flowchart TD
 | **Inventário de eletrônicos** | Cadastro de equipamentos, fotos privadas e solicitação de avaliação | Implementado |
 | **Triagem assistida por IA** | Identificação preliminar e sugestões de aproveitamento | Planejado |
 | **Catálogo de componentes** | Busca, filtros, detalhes da avaliação e favoritos | Implementado |
+| **Visualização 3D** | Seis modelos interativos com rotação, zoom e vista explodida | Implementado |
 | **Anúncios e pedidos** | Publicação de componentes aprovados, carrinho e reserva de estoque | Implementado |
 | **Destinação responsável** | Encaminhamentos e confirmação com comprovante | Implementado |
 | **Painel de impacto** | Indicadores agregados de recuperação e destinação | Implementado |
 
 Os módulos que usam autenticação ou dados precisam de um projeto Supabase configurado com a migração deste repositório.
+
+### Estúdio de componentes
+
+Em **Componentes → Visualização 3D**, explore placa-mãe, memória RAM, SSD M.2, processador, placa de vídeo e notebook. A página inicial também apresenta a placa-mãe em uma nova cena com materiais metálicos, circuitos e peças separáveis.
+
+- Arraste para girar; use os botões, a roda do mouse ou o gesto de pinça para ampliar.
+- Alterne entre montagem e vista explodida, ative a rotação automática ou restaure o enquadramento. Tela cheia está disponível nos navegadores compatíveis.
+- Com o visualizador em foco, use as setas para girar, `+`/`-` para zoom e `Home` para restaurar.
+- Os modelos são referências construídas com geometria tridimensional e materiais PBR no Three.js. Não representam digitalizações dos produtos anunciados nem garantem compatibilidade.
+
+O código 3D carrega apenas quando o visualizador se aproxima da área visível. A renderização pausa fora da tela e respeita a preferência de redução de movimento. Dispositivos sem WebGL 2 recebem uma ilustração alternativa. Os testes verificam integridade da geometria, orçamento de triângulos, montagem e liberação dos recursos.
 
 ---
 
@@ -330,7 +342,7 @@ O MVP inclui cadastro de eletrônicos com fotos, avaliação técnica, catálogo
 
 ## Executar localmente
 
-Use Node.js 22 ou superior e npm. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com a URL e a chave publicável do seu projeto Supabase.
+Use Node.js 22.18 ou superior e npm (validado no Node.js 24). Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com a URL e a chave publicável do seu projeto Supabase.
 
 ```sh
 npm ci
