@@ -1,40 +1,51 @@
-/* Auth is an independent composition: a scroll-driven hardware story and an always-usable form. */
+/* The hardware intro owns the viewport; dismissing it reveals the centered login. */
 body:has(.access-shell) { padding-bottom: 0; }
-.auth-experience { width: min(1440px, calc(100% - 64px)); margin: 28px auto 0; }
-.auth-stage { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .85fr); gap: clamp(32px, 5vw, 88px); align-items: center; }
-.assembly-story { min-width: 0; position: relative; isolation: isolate; background: #e5efed; border-radius: 24px; overflow: hidden; color: #20474d; display: flex; flex-direction: column; }
-.assembly-heading { padding: 30px 36px 0; z-index: 1; }
-.assembly-tag { display: inline-flex; align-items: center; gap: 8px; color: #4d686b; font-size: 12px; margin-bottom: 16px; }
-.assembly-tag > span { width: 7px; height: 7px; border-radius: 50%; background: #317c79; }
-.assembly-heading h2 { font-size: clamp(30px, 3.1vw, 44px); line-height: 1.12; font-weight: 600; letter-spacing: -.045em; }
-.assembly-heading > p { font-size: 13px; color: #4d686b; margin-top: 12px; }
-.assembly-art { position: relative; height: clamp(310px, 41svh, 430px); min-height: 280px; flex: 1; }
-.assembly-canvas { position: absolute; inset: -12px 0 0; }
+body:has(.auth-intro[open]) { overflow: hidden; }
+.auth-experience { width: min(460px, calc(100% - 40px)); margin: 0 auto; display: flex; align-items: center; }
+.auth-intro { position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; color: #20474d; background: #e5efed; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; scroll-behavior: auto; }
+.auth-intro::backdrop { background: #e5efed; }
+.auth-intro::-webkit-scrollbar { display: none; }
+.assembly-track { height: 280dvh; }
+.assembly-story { position: sticky; top: 0; isolation: isolate; min-width: 0; height: 100dvh; padding: max(24px, env(safe-area-inset-top)) clamp(24px, 4vw, 64px) max(24px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(260px, .78fr) minmax(0, 1.6fr); grid-template-rows: auto 1fr auto; column-gap: 32px; overflow: hidden; }
+.assembly-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; z-index: 2; }
+.assembly-header .brand { font-size: 27px; }
+.assembly-skip { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 11px 18px; border: 1px solid #91b0ac; border-radius: 999px; font-size: 13px; font-weight: 650; transition: background-color .18s, border-color .18s; white-space: nowrap; }
+button.assembly-skip:hover { background: #cfdfdc; border-color: #547e7a; }
+.assembly-heading { grid-column: 1; grid-row: 2; align-self: center; z-index: 1; padding-bottom: 32px; }
+.assembly-tag { display: inline-flex; align-items: center; gap: 8px; color: #4d686b; font-size: 11px; margin-bottom: 24px; }
+.assembly-tag > span { width: 6px; height: 6px; border-radius: 50%; background: #317c79; }
+.assembly-heading h2 { max-width: 8.8ch; font-size: clamp(42px, 4.5vw, 76px); line-height: 1.04; font-weight: 600; letter-spacing: -.055em; text-wrap: initial; }
+.assembly-heading > p { font-size: 14px; line-height: 1.8; color: #4d686b; margin-top: 24px; max-width: 27ch; }
+.assembly-art { position: absolute; inset: 76px 0 160px 27%; min-width: 0; min-height: 0; pointer-events: none; }
+.assembly-canvas { position: absolute; inset: 0; }
 .assembly-canvas canvas { width: 100%; height: 100%; display: block; }
-.assembly-shadow { position: absolute; width: 52%; height: 9%; background: #1e464a2b; border-radius: 50%; filter: blur(15px); left: 24%; bottom: 14%; transform: rotate(-8deg); }
-.assembly-poster { position: absolute; width: 90%; height: 100%; object-fit: contain; left: 5%; top: 0; }
-.assembly-model-note { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; color: #536e70; font-size: 10px; pointer-events: none; }
-.assembly-bottom { padding: 20px 32px 22px; }
-.assembly-chapter { display: flex; align-items: center; gap: 12px; min-height: 46px; }
-.assembly-chapter-number { border: 1px solid #8ba8a6; border-radius: 11px; width: 41px; height: 41px; flex-shrink: 0; display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+.assembly-shadow { position: absolute; width: 42%; height: 8%; background: #1e464a25; border-radius: 50%; filter: blur(20px); left: 29%; bottom: 10%; transform: rotate(-8deg); }
+.assembly-poster { position: absolute; width: 100%; height: 100%; object-fit: contain; inset: 0; }
+.assembly-bottom { grid-column: 2; grid-row: 3; z-index: 1; width: min(100%, 560px); justify-self: center; }
+.assembly-chapter { display: flex; align-items: center; gap: 14px; min-height: 46px; }
+.assembly-chapter-number { border: 1px solid #8ba8a6; border-radius: 11px; width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; font-size: 13px; font-weight: 600; }
 .assembly-chapter strong { font-size: 14px; font-weight: 700; }
-.assembly-chapter p { color: #526c6d; font-size: 11px; margin-top: 2px; }
-.assembly-percent { margin-left: auto; font-size: 11px; color: #526c6d; font-variant-numeric: tabular-nums; }
-.assembly-progress { appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 28px; min-height: 28px; padding: 0; margin: 8px 0 0; background: transparent; border: 0; cursor: pointer; box-shadow: none; }
+.assembly-chapter p { color: #526c6d; font-size: 12px; margin-top: 2px; }
+.assembly-percent { margin-left: auto; font-size: 12px; color: #526c6d; font-variant-numeric: tabular-nums; }
+.assembly-progress { appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 32px; min-height: 32px; padding: 0; margin: 8px 0 0; background: transparent; border: 0; cursor: pointer; box-shadow: none; }
 .assembly-progress::-webkit-slider-runnable-track { height: 3px; border-radius: 4px; background: linear-gradient(to right, #286d70 var(--assembly-progress, 0%), #bbcecb var(--assembly-progress, 0%)); }
 .assembly-progress::-moz-range-track { height: 3px; background: #bbcecb; }
 .assembly-progress::-moz-range-progress { height: 3px; background: #286d70; }
 .assembly-progress::-webkit-slider-thumb { appearance: none; width: 13px; height: 13px; border-radius: 50%; margin-top: -5px; background: #286d70; border: 3px solid #e5efed; box-shadow: 0 0 0 1px #286d70; }
 .assembly-progress::-moz-range-thumb { width: 8px; height: 8px; border-radius: 50%; background: #286d70; border: 2px solid #e5efed; }
-.assembly-actions, .assembly-actions > div { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-.assembly-instruction { display: flex; align-items: center; gap: 7px; font-size: 10px; color: #486769; }
-.assembly-actions button { border: 1px solid #afc5c1; border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; color: #315e60; }
+.assembly-actions, .assembly-actions > div { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.assembly-instruction { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #486769; }
+.assembly-actions button { border: 1px solid #afc5c1; border-radius: 50%; width: 44px; height: 44px; display: grid; place-items: center; color: #315e60; }
 .assembly-actions button:hover { background: #d1e2df; }
-.assembly-fallback-note { font-size: 11px; color: #526c6d; margin-top: 12px; }
-.auth-form-panel { min-width: 0; padding: 30px 20px 30px 0; max-width: 460px; width: 100%; justify-self: center; }
+.assembly-fallback-note { font-size: 12px; color: #526c6d; margin-top: 16px; }
+.assembly-fallback-note button { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.auth-intro[data-motion='reduced'] .assembly-track, .auth-intro:has(.assembly-story[data-status='fallback']) .assembly-track { height: 100dvh; }
+.assembly-story[data-status='fallback'] .assembly-percent { display: none; }
+.auth-form-panel { min-width: 0; padding: clamp(28px, 5vh, 56px) 0; max-width: 460px; width: 100%; margin: auto; }
 .auth-form-emblem { height: 50px; width: 50px; display: grid; place-items: center; background: var(--hero); border: 1px solid var(--border); border-radius: 15px; color: var(--primary); margin-bottom: 23px; }
 .auth-form-panel .auth-form-section { width: 100%; max-width: none; padding: 0; }
 .auth-form-panel h1 { font-size: clamp(29px, 2.55vw, 38px); font-weight: 650; line-height: 1.2; }
+.auth-form-panel h1:focus { outline: none; }
 .auth-form-panel .auth-form-section > p { font-size: 14px; margin: 12px 0 28px; line-height: 1.7; max-width: 37ch; }
 .auth-form-panel .auth-form { gap: 18px; }
 .auth-form-panel .auth-form > label, .auth-form-panel .password-label { font-size: 13px; font-weight: 600; }
@@ -56,51 +67,36 @@ body:has(.access-shell) { padding-bottom: 0; }
 .auth-password-guide { display: flex; gap: 7px; align-items: center; color: var(--muted); font-size: 11px; }
 .auth-password-guide[data-valid='true'] { color: var(--primary); }
 .auth-form-panel .notice-box { font-size: 13px; }
-.dark .assembly-story { background: #172f37; color: #e2efec; }
-.dark .assembly-heading > p, .dark .assembly-tag, .dark .assembly-chapter p, .dark .assembly-percent, .dark .assembly-model-note, .dark .assembly-instruction, .dark .assembly-fallback-note { color: #aec8c7; }
+.dark .auth-intro, .dark .auth-intro::backdrop { background: #172f37; color: #e2efec; }
+.dark .assembly-heading > p, .dark .assembly-tag, .dark .assembly-chapter p, .dark .assembly-percent, .dark .assembly-instruction, .dark .assembly-fallback-note { color: #aec8c7; }
 .dark .assembly-tag > span { background: #87cfc3; }
-.dark .assembly-actions button { border-color: #547674; color: #c1ded9; }
-.dark .assembly-actions button:hover { background: #29484c; }
+.dark .assembly-actions button, .dark .assembly-skip { border-color: #547674; color: #c1ded9; }
+.dark .assembly-actions button:hover, .dark button.assembly-skip:hover { background: #29484c; }
 .dark .assembly-chapter-number { border-color: #547674; }
 .dark .assembly-progress::-webkit-slider-runnable-track { background: linear-gradient(to right, #85c8bf var(--assembly-progress, 0%), #486462 var(--assembly-progress, 0%)); }
 .dark .assembly-progress::-webkit-slider-thumb { background: #9cdbd0; border-color: #172f37; box-shadow: 0 0 0 1px #9cdbd0; }
-@media (min-width: 980px) {
-  .auth-experience { min-height: 255svh; }
-  .auth-stage { position: sticky; top: 24px; }
-  .auth-form-panel { max-height: calc(100svh - 48px); overflow-y: auto; scrollbar-width: thin; }
-  .auth-experience[data-motion='reduced'], .auth-experience:has(.assembly-story[data-status='fallback']) { min-height: auto; }
-  .auth-experience:has(.assembly-story[data-status='fallback']) .assembly-percent { display: none; }
-}
-@media (min-width: 980px) and (max-height: 760px) {
-  .assembly-heading { padding: 20px 28px 0; }
-  .assembly-heading h2 { font-size: 30px; }
-  .assembly-tag { margin-bottom: 8px; }
-  .assembly-heading > p { margin-top: 7px; }
-  .assembly-art { height: max(210px, calc(100svh - 364px)); min-height: 210px; }
-  .assembly-bottom { padding: 12px 28px 14px; }
-  .auth-form-panel { padding-block: 14px; }
-  .auth-form-emblem { margin-bottom: 16px; width: 42px; height: 42px; }
-}
+.dark .assembly-progress::-moz-range-progress { background: #85c8bf; }
+.dark .assembly-progress::-moz-range-thumb { background: #9cdbd0; border-color: #172f37; }
 @media (max-width: 979px) {
-  .auth-experience { width: min(620px, calc(100% - 32px)); margin-top: 16px; }
-  .auth-stage { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .assembly-story { border-radius: 20px; }
-  .assembly-heading { padding: 20px 22px 0; }
-  .assembly-tag { font-size: 10px; margin-bottom: 10px; }
-  .assembly-heading h2 { font-size: clamp(25px, 6vw, 32px); }
-  .assembly-heading h2 br { display: none; }
-  .assembly-heading > p { font-size: 12px; margin-top: 8px; }
-  .assembly-art { height: 250px; min-height: 210px; }
-  .assembly-bottom { padding: 14px 20px 15px; }
-  .assembly-chapter { gap: 10px; min-height: 38px; }
-  .assembly-chapter-number { width: 36px; height: 36px; font-size: 12px; }
+  .assembly-track { height: 100dvh; }
+  .assembly-story { padding: max(18px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left)); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0; }
+  .assembly-header { grid-column: 1; }
+  .assembly-header .brand { font-size: 22px; gap: 7px; }
+  .assembly-header .brand-mark { width: 32px; height: 34px; }
+  .assembly-header .brand-mark svg { width: 22px; }
+  .assembly-skip { min-height: 44px; padding: 9px 13px; gap: 8px; font-size: 12px; }
+  .assembly-heading { grid-row: 2; text-align: center; padding: clamp(18px, 4vh, 40px) 0 0; }
+  .assembly-tag { font-size: 10px; margin-bottom: 12px; }
+  .assembly-heading h2 { font-size: clamp(29px, 7.5vw, 46px); max-width: 16ch; margin-inline: auto; text-wrap: balance; line-height: 1.1; }
+  .assembly-heading > p { font-size: 12px; margin: 12px auto 0; max-width: 34ch; }
+  .assembly-art { position: relative; grid-column: 1; grid-row: 3; inset: auto; width: 100%; height: 100%; }
+  .assembly-bottom { grid-column: 1; grid-row: 4; }
+  .assembly-chapter { gap: 10px; }
   .assembly-chapter strong { font-size: 12px; }
-  .assembly-chapter p { font-size: 10px; }
-  .assembly-progress { height: 24px; min-height: 24px; margin-top: 6px; }
-  .assembly-actions button { width: 44px; height: 44px; }
-  .assembly-instruction { font-size: 10px; }
-  .auth-form-panel { padding: 30px 8px 20px; max-width: 460px; }
-  .auth-form-emblem { display: none; }
+  .assembly-chapter p { font-size: 11px; }
+  .assembly-percent, .assembly-instruction { font-size: 10px; }
+  .assembly-fallback-note { font-size: 11px; margin-top: 8px; }
+  .auth-form-panel { padding: 32px 0; }
   .auth-form-panel h1 { font-size: 30px; }
   .auth-form-panel .auth-form-section > p { margin: 10px 0 24px; }
   .auth-form-panel .auth-form { gap: 19px; }
@@ -108,17 +104,35 @@ body:has(.access-shell) { padding-bottom: 0; }
   .auth-form-panel .password-label button { min-height: 44px; }
 }
 @media (max-width: 380px) {
-  .assembly-heading { padding-inline: 18px; }
-  .assembly-art { height: 220px; }
-  .assembly-chapter p { max-width: 24ch; }
-  .assembly-bottom { padding-inline: 16px; }
-  .assembly-percent { font-size: 10px; }
+  .assembly-story { padding-inline: 16px; }
+  .assembly-header .brand { font-size: 19px; gap: 5px; }
+  .assembly-header .brand-mark { width: 29px; height: 30px; }
+  .assembly-skip { font-size: 11px; padding-inline: 11px; gap: 6px; }
+  .assembly-heading h2 { font-size: 29px; }
+  .assembly-heading > p { font-size: 11px; }
+  .assembly-chapter-number { width: 38px; height: 38px; }
+  .assembly-chapter p { font-size: 10px; }
   .auth-form-panel .password-label { font-size: 12px; }
   .auth-form-panel .password-label button { font-size: 11px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .auth-experience { min-height: auto; }
-  .auth-stage { position: static; }
+@media (max-width: 979px) and (max-height: 680px) {
+  .assembly-story { padding-block: 12px; }
+  .assembly-heading { padding-top: 12px; }
+  .assembly-tag { margin-bottom: 6px; }
+  .assembly-heading h2 { font-size: 27px; }
+  .assembly-heading > p { display: none; }
+  .assembly-progress { margin-top: 2px; }
 }
-
-.assembly-story[data-status='fallback'] .assembly-percent { display: none; }
+@media (max-width: 979px) and (orientation: landscape) and (max-height: 540px) {
+  .assembly-story { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 24px; }
+  .assembly-header { grid-column: 1 / -1; }
+  .assembly-heading { grid-column: 1; grid-row: 2; text-align: left; padding-block: 12px; }
+  .assembly-heading h2 { margin: 0; font-size: 27px; }
+  .assembly-heading .assembly-tag { display: none; }
+  .assembly-art { grid-column: 2; grid-row: 2 / 4; }
+  .assembly-bottom { grid-column: 1; grid-row: 3; }
+  .assembly-chapter p { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assembly-track { height: 100dvh; }
+}

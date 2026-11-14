@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FunctionsHttpError, isAuthError } from '@supabase/supabase-js';
@@ -45,12 +45,28 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [introOpen, setIntroOpen] = useState(true);
+  const formHeading = useRef<HTMLHeadingElement>(null);
   const submitting = useRef(false);
   const activeMode = session.recovering ? 'reset' : mode;
   const newPassword = activeMode === 'reset' || activeMode === 'invite';
   const [title, description, action] = copy[activeMode];
   const ready = Boolean(db) && session.status !== 'checking' && session.status !== 'unavailable'
     && (!session.recovering || Boolean(session.user)) && (activeMode !== 'invite' || Boolean(inviteToken));
+
+  const finishIntro = useCallback(() => {
+    setIntroOpen(false);
+    // Wait for the modal to unmount before moving focus; do not open the mobile keyboard.
+    requestAnimationFrame(() => formHeading.current?.focus({ preventScroll: true }));
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const hash = new URLSearchParams(url.hash.slice(1));
+    // Account invitation and password-recovery links should open their form immediately.
+    if (['convite', 'type', 'access_token', 'error'].some(key => hash.has(key))
+      || url.searchParams.has('code') || url.searchParams.has('error')) setIntroOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!account) return;
@@ -201,12 +217,11 @@ export function AuthPage({ account = false }: { account?: boolean }) {
 
   return (
     <main id="main" className="auth-experience">
-      <div className="auth-stage">
-      <AuthAssembly />
+      {introOpen && activeMode === 'login' && !user && <AuthAssembly onComplete={finishIntro} />}
       <div className="auth-form-panel">
       <div className="auth-form-emblem" aria-hidden="true"><ShieldCheck size={25} strokeWidth={1.6} /></div>
       <section className="auth-form-section" aria-labelledby="auth-title">
-        <h1 id="auth-title">{title}</h1>
+        <h1 id="auth-title" ref={formHeading} tabIndex={-1}>{title}</h1>
         <p>{description}</p>
         {session.status === 'unavailable' && (
           <div className="notice-box" role="status">
@@ -291,7 +306,6 @@ export function AuthPage({ account = false }: { account?: boolean }) {
         )}
         <div className="auth-security"><ShieldCheck size={15} aria-hidden="true" />Acesso por convite</div>
       </section>
-      </div>
       </div>
     </main>
   );

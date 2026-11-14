@@ -37,8 +37,8 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
   const timeline = createAssemblyTimeline(model);
   const media = window.matchMedia('(max-width: 979px)');
   const reducedMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const experience = host.closest<HTMLElement>('.auth-experience')!;
-  const stage = experience.querySelector<HTMLElement>('.auth-stage')!;
+  const experience = host.closest<HTMLDialogElement>('.auth-intro')!;
+  const track = experience.querySelector<HTMLElement>('.assembly-track')!;
   let mobile = media.matches;
   let reduced = reducedMedia.matches;
   let paused = reduced;
@@ -51,12 +51,15 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
   let disposed = false;
   let dirty = true;
   let lastReport = -1;
+  let lastComplete = false;
   const starts = [0, 600, 2900, 5000, 7000, 8600, 10600, 12900, 15000];
   const parts = [model.chassis, model.board, model.processor, model.memory, model.ssd, model.cooler, model.gpu, model.power, model.panel];
   function report(force = false) {
     const value = Math.round(progress * 100);
-    if (force || value !== lastReport) {
+    const complete = progress === 1;
+    if (force || value !== lastReport || complete !== lastComplete) {
       lastReport = value;
+      lastComplete = complete;
       onUpdate({ progress, mobile, paused, reduced });
     }
   }
@@ -73,9 +76,8 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
   }
   function scrollTarget() {
     if (mobile || reduced) return;
-    const rect = experience.getBoundingClientRect();
-    const travel = Math.max(1, experience.offsetHeight - stage.offsetHeight - 32);
-    target = T.MathUtils.clamp((24 - rect.top) / travel, 0, 1);
+    const travel = Math.max(1, track.offsetHeight - experience.clientHeight);
+    target = T.MathUtils.clamp(experience.scrollTop / travel, 0, 1);
     dirty = true;
   }
   function resize() {
@@ -83,7 +85,8 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 1.8));
     renderer.setSize(Math.max(1, width), Math.max(1, height), false);
     camera.aspect = width / Math.max(1, height);
-    camera.fov = mobile ? 38 : 34;
+    // Keep the case within the frame on tall phones and wide, short displays.
+    camera.fov = T.MathUtils.radToDeg(2 * Math.atan(Math.max(.31, .32 / camera.aspect)));
     camera.updateProjectionMatrix();
     scrollTarget();
     dirty = true;
@@ -130,7 +133,7 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
   const resizeObserver = new ResizeObserver(resize);
   observer.observe(host);
   resizeObserver.observe(host);
-  window.addEventListener('scroll', scrollTarget, { passive: true });
+  experience.addEventListener('scroll', scrollTarget, { passive: true });
   document.addEventListener('visibilitychange', syncLoop);
   media.addEventListener('change', preferenceChange);
   reducedMedia.addEventListener('change', preferenceChange);
@@ -143,9 +146,8 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
     time = progress * timeline.duration;
     if (mobile) paused = true;
     else if (!reduced) {
-      const top = window.scrollY + experience.getBoundingClientRect().top - 24;
-      const travel = Math.max(1, experience.offsetHeight - stage.offsetHeight - 32);
-      window.scrollTo({ top: top + travel * progress, behavior: 'instant' });
+      const travel = Math.max(1, track.offsetHeight - experience.clientHeight);
+      experience.scrollTo({ top: travel * progress, behavior: 'instant' });
     }
     dirty = true;
     report(true);
@@ -165,7 +167,7 @@ export function createAssemblyScene(host: HTMLElement, onUpdate: (state: Assembl
       renderer.setAnimationLoop(null);
       observer.disconnect();
       resizeObserver.disconnect();
-      window.removeEventListener('scroll', scrollTarget);
+      experience.removeEventListener('scroll', scrollTarget);
       document.removeEventListener('visibilitychange', syncLoop);
       media.removeEventListener('change', preferenceChange);
       reducedMedia.removeEventListener('change', preferenceChange);
