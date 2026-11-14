@@ -1,15 +1,12 @@
 /* Mobile interaction layer. The desktop visual system remains in globals.css. */
 :root { --mobile-nav-height: 72px; }
-.mobile-step-label, .dashboard-mobile-tabs, .device-more-types, .camera-upload, .upload-mobile-copy { display: none; }
+.mobile-step-label, .device-more-types, .camera-upload, .upload-mobile-copy { display: none; }
 .upload-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
 @media (max-width: 950px) {
   .mobile-menu { display: inline-flex; }
   .mobile-dropdown { position: static; display: flex; flex-direction: column; padding: 0; box-shadow: none; border: 0; background: transparent; gap: 5px; }
   .mobile-dropdown a { display: flex; align-items: center; min-height: 49px; padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; }
   .mobile-dropdown a:active { background: var(--hero); color: var(--primary); }
-  .dashboard-mobile-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 13px; margin-bottom: 23px; scrollbar-width: thin; overscroll-behavior-inline: contain; }
-  .dashboard-mobile-tabs > * { display: inline-flex; align-items: center; flex-shrink: 0; gap: 8px; min-height: 46px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 9px; font-size: 13px; white-space: nowrap; }
-  .dashboard-mobile-tabs .active { color: var(--primary); background: var(--hero); border-color: var(--primary); font-weight: 700; }
 }
 @media (max-width: 767px) {
   :root { --muted: #52696f; }
@@ -226,8 +223,6 @@
   .success-panel p { font-size: 14px; line-height: 1.8; }
   .profile-layout { grid-template-columns: 1fr; gap: 24px; }
   .profile-card > p { font-size: 13px; overflow-wrap: anywhere; }
-  .dashboard-layout { grid-template-columns: minmax(0, 1fr); padding-top: 4px; }
-  .dashboard-content { min-width: 0; }
   .dashboard-heading { display: block; margin-bottom: 24px; }
   .dashboard-heading h1 { font-size: 33px; }
   .dashboard-heading .section-kicker { font-size: 12px; }
