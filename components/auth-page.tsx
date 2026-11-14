@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { FunctionsHttpError, isAuthError } from '@supabase/supabase-js';
 import { ArrowRight, Camera, Eye, EyeOff, LogOut, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
+import { AuthAssembly } from './auth-assembly';
 import { usePlatform } from './platform-provider';
 import { db } from '@/lib/supabase';
 import { errorMessage } from '@/lib/utils';
@@ -39,6 +40,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   const [mode, setMode] = useState<Mode>('login');
   const [inviteToken, setInviteToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordLength, setPasswordLength] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -95,6 +97,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
     }
     setMode(next);
     setShowPassword(false);
+    setPasswordLength(0);
     setError('');
     setSuccess('');
   }
@@ -197,11 +200,11 @@ export function AuthPage({ account = false }: { account?: boolean }) {
   if (user && account && mode === 'login' && !success) return <ProfilePage key={user.id} onRecover={() => changeMode('forgot')} />;
 
   return (
-    <main id="main" className="container auth-main">
-      <aside className="auth-visual" aria-hidden="true">
-        <h2>Uma nova vida para a tecnologia.</h2>
-        <img src="/visuals/motherboard.svg" width="800" height="600" alt="" />
-      </aside>
+    <main id="main" className="auth-experience">
+      <div className="auth-stage">
+      <AuthAssembly />
+      <div className="auth-form-panel">
+      <div className="auth-form-emblem" aria-hidden="true"><ShieldCheck size={25} strokeWidth={1.6} /></div>
       <section className="auth-form-section" aria-labelledby="auth-title">
         <h1 id="auth-title">{title}</h1>
         <p>{description}</p>
@@ -227,7 +230,7 @@ export function AuthPage({ account = false }: { account?: boolean }) {
                   <label>
                     E-mail
                     <input name="email" autoComplete="username" type="email" required maxLength={254}
-                      spellCheck={false} autoCapitalize="none" defaultValue={activeMode === 'forgot' ? user?.email : undefined} />
+                      spellCheck={false} autoCapitalize="none" placeholder="voce@exemplo.com" defaultValue={activeMode === 'forgot' ? user?.email : undefined} />
                   </label>
                 )}
                 {activeMode !== 'forgot' && (
@@ -240,7 +243,9 @@ export function AuthPage({ account = false }: { account?: boolean }) {
                       <input id="auth-password" name="password" type={showPassword ? 'text' : 'password'}
                         autoComplete={activeMode === 'login' ? 'current-password' : 'new-password'}
                         required minLength={newPassword ? minimumPasswordLength : undefined}
-                        maxLength={newPassword ? 72 : 128} aria-describedby={activeMode === 'invite' ? 'auth-password-help' : undefined} />
+                        maxLength={newPassword ? 72 : 128} placeholder={newPassword ? '12 caracteres ou mais' : 'Digite sua senha'}
+                        onChange={event => setPasswordLength(event.target.value.length)}
+                        aria-describedby={newPassword ? 'auth-password-help' : undefined} />
                       <button type="button" className="icon-button" aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                         onClick={() => setShowPassword(value => !value)}>
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -248,11 +253,13 @@ export function AuthPage({ account = false }: { account?: boolean }) {
                     </div>
                   </>
                 )}
-                {activeMode === 'invite' && <small id="auth-password-help" className="muted">Use pelo menos 12 caracteres.</small>}
+                {newPassword && <small id="auth-password-help" className="auth-password-guide" data-valid={passwordLength >= minimumPasswordLength}>
+                  <ShieldCheck size={14} aria-hidden="true" />{passwordLength >= minimumPasswordLength ? 'Tamanho mínimo atendido. Prefira uma senha exclusiva.' : 'Use pelo menos 12 caracteres. Uma frase pode ajudar.'}
+                </small>}
                 {newPassword && (
                   <label>
                     Confirme a nova senha
-                    <input name="confirmation" type="password" autoComplete="new-password" required minLength={minimumPasswordLength} maxLength={72} />
+                    <input name="confirmation" type="password" autoComplete="new-password" placeholder="Repita a nova senha" required minLength={minimumPasswordLength} maxLength={72} />
                   </label>
                 )}
                 {activeMode === 'invite' && (
@@ -284,6 +291,8 @@ export function AuthPage({ account = false }: { account?: boolean }) {
         )}
         <div className="auth-security"><ShieldCheck size={15} aria-hidden="true" />Acesso por convite</div>
       </section>
+      </div>
+      </div>
     </main>
   );
 }

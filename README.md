@@ -353,6 +353,11 @@ Abra `http://localhost:3000`. A entrada do EcoCiclo exige uma sessão com e-mail
 
 ### Autenticação e administração
 
+A tela de acesso e ativação por convite apresenta um PC em montagem 3D com **Three.js e Anime.js**. No computador, a rolagem controla a montagem e a desmontagem; no celular, uma sequência automática de 18 segundos oferece pausa, replay e controle de progresso. O formulário fica disponível durante toda a experiência.
+
+A cena monta gabinete, placa-mãe, processador, RAM, SSD, cooler, placa de vídeo, fonte e painel lateral. O carregamento é separado do formulário, a resolução é limitada no celular e a renderização pausa fora da tela ou com a aba oculta. A preferência de movimento reduzido mostra o PC montado; dispositivos sem WebGL 2 usam uma ilustração. O cadastro permanece exclusivo por convite da administração.
+
+
 1. Aplique as [migrações do EcoCiclo](supabase/migrations/) em ordem e publique a função `activate-account` no mesmo projeto Supabase. A função recebe um convite de uso único antes da autenticação e precisa ser implantada com `verify_jwt` desativado. A validação do convite ocorre no banco e a chave administrativa fica no ambiente da função.
 2. Use o domínio de produção como **Site URL** no Supabase Auth e autorize os redirecionamentos completos para `/conta/` em produção e desenvolvimento. Configure SMTP para a recuperação de senha. O link de recuperação usa PKCE e deve ser aberto no navegador em que foi solicitado.
 3. O proprietário do banco deve inicializar os papéis `admin` e `primary_admin` para a conta verificada que administrará o projeto. Existe apenas um administrador principal, que gerencia o papel `admin`.

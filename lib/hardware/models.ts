@@ -75,8 +75,9 @@ export function createHardwareModel(id: HardwareId) {
     mesh.position.set(x, y, z);
     g.add(mesh);
   }
-  function part(x: number, y: number, z: number) {
+  function part(x: number, y: number, z: number, name = "") {
     const group = new T.Group();
+    group.name = name;
     root.add(group);
     parts.push({ group, offset: new T.Vector3(x, y, z) });
     return group;
@@ -379,7 +380,7 @@ export function createHardwareModel(id: HardwareId) {
       box(base, -0.3, 0.22, z, 1.55, 0.065, 0.055, silver);
     for (const x of [-1.05, 0.45])
       box(base, x, 0.22, -0.9, 0.055, 0.065, 1.54, silver);
-    cpu(part(0, 1.4, 0), -0.3, 0.22, -0.9);
+    cpu(part(0, 1.4, 0, "processor"), -0.3, 0.22, -0.9);
     box(base, 0.56, 0.24, -0.9, 0.035, 0.035, 1.72, silver).rotation.y = -0.08;
     heatsink(base, -1.35, -0.95, 0.36, 1.9);
     heatsink(base, -0.35, -2.24, 1.65, 0.45);
@@ -402,7 +403,7 @@ export function createHardwareModel(id: HardwareId) {
       for (const z of [-2.26, 0.1])
         box(base, x, 0.24, z, 0.22, 0.32, 0.13, aluminum, true);
     }
-    const memory = part(0.1, 1, 0),
+    const memory = part(0.1, 1, 0, "memory"),
       module = new T.Group();
     memory.add(module);
     ram(module);
@@ -429,7 +430,7 @@ export function createHardwareModel(id: HardwareId) {
     }
     heatsink(base, 1.56, 1.16, 1.1, 1.13, 0.15);
     label(base, "EC / ATX", 1.56, 0.37, 1.16, 0.75, 0.2, true);
-    const storage = part(0, 0.65, 0.22),
+    const storage = part(0, 0.65, 0.22, "ssd"),
       drive = new T.Group();
     storage.add(drive);
     ssd(drive);
@@ -666,6 +667,7 @@ export function createHardwareModel(id: HardwareId) {
   );
   return {
     root,
+    assemblyParts: parts.map(({ group }) => group),
     setExploded(amount: number) {
       parts.forEach((p) =>
         p.group.position.copy(p.offset).multiplyScalar(amount),
